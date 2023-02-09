@@ -49,28 +49,46 @@ import org.apache.rocketmq.store.util.LibC;
 import sun.nio.ch.DirectBuffer;
 
 public class DefaultMappedFile extends AbstractMappedFile {
+
+
+//    这里需要额外讲解的是，几个表示位置的参数。wrotePosition，committedPosition，flushedPosition。大概的关系如下wrotePosition<=committedPosition<=flushedPosition<=fileSize
+//
+//    作者：szhlcy
+//    链接：https://www.jianshu.com/p/2aad2044980d
+//    来源：简书
+//    著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。
+
+
+    //pageCache的大小
     public static final int OS_PAGE_SIZE = 1024 * 4;
     protected static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
-
+    //文件已使用的映射虚拟内存
     protected static final AtomicLong TOTAL_MAPPED_VIRTUAL_MEMORY = new AtomicLong(0);
-
+    //映射额文件个数
     protected static final AtomicInteger TOTAL_MAPPED_FILES = new AtomicInteger(0);
 
     protected static final AtomicIntegerFieldUpdater<DefaultMappedFile> WROTE_POSITION_UPDATER;
     protected static final AtomicIntegerFieldUpdater<DefaultMappedFile> COMMITTED_POSITION_UPDATER;
     protected static final AtomicIntegerFieldUpdater<DefaultMappedFile> FLUSHED_POSITION_UPDATER;
-
+    //已经写入的位置
     protected volatile int wrotePosition;
+    // 提交完成位置
     protected volatile int committedPosition;
+    //刷新完成位置
     protected volatile int flushedPosition;
+    //文件大小
     protected int fileSize;
+    //创建MappedByteBuffer用的
     protected FileChannel fileChannel;
     /**
      * Message will put to here first, and then reput to FileChannel if writeBuffer is not null.
+     * 消息将首先放在这里，如果writeBuffer不为空，则再放到FileChannel。
      */
     protected ByteBuffer writeBuffer = null;
     protected TransientStorePool transientStorePool = null;
+    //文件名
     protected String fileName;
+    //文件开始offset
     protected long fileFromOffset;
     protected File file;
     protected MappedByteBuffer mappedByteBuffer;
@@ -117,18 +135,27 @@ public class DefaultMappedFile extends AbstractMappedFile {
     }
 
     private void init(final String fileName, final int fileSize) throws IOException {
+        //文件名
         this.fileName = fileName;
+        //文件大小
         this.fileSize = fileSize;
+        //创建文件
         this.file = new File(fileName);
+        //文件名称是文件占用内存偏移量的起始位置，前面说过RocketMQ中消息存储的文件的命名是偏移量来进行命名的
+        //根据文件的名称计算文件其实的偏移量
         this.fileFromOffset = Long.parseLong(this.file.getName());
         boolean ok = false;
 
         UtilAll.ensureDirOK(this.file.getParent());
 
         try {
+            //创建读写类型的fileChannel
             this.fileChannel = new RandomAccessFile(this.file, "rw").getChannel();
+            //获取写入类型的内存文件映射对象mappedByteBuffer
             this.mappedByteBuffer = this.fileChannel.map(MapMode.READ_WRITE, 0, fileSize);
+            //增加已经映射的虚拟内存
             TOTAL_MAPPED_VIRTUAL_MEMORY.addAndGet(fileSize);
+            //已经映射文件数量+1
             TOTAL_MAPPED_FILES.incrementAndGet();
             ok = true;
         } catch (FileNotFoundException e) {
@@ -189,6 +216,14 @@ public class DefaultMappedFile extends AbstractMappedFile {
         return fileChannel;
     }
 
+    /**
+     * 拼接消息的方法，供commitlog使用
+     *
+     * @param msg
+     * @param cb
+     * @param putMessageContext
+     * @return
+     */
     @Override
     public AppendMessageResult appendMessage(final MessageExtBrokerInner msg, final AppendMessageCallback cb,
                                              PutMessageContext putMessageContext) {
@@ -205,19 +240,22 @@ public class DefaultMappedFile extends AbstractMappedFile {
                                                    PutMessageContext putMessageContext) {
         assert messageExt != null;
         assert cb != null;
-
+        //        获取当前写的位置
         int currentPos = WROTE_POSITION_UPDATER.get(this);
 
         if (currentPos < this.fileSize) {
+            //这里的writeBuffer，如果在启动的时候配置了启用暂存池，这里的writeBuffer是堆外内存方式。获取byteBuffer
             ByteBuffer byteBuffer = appendMessageBuffer().slice();
             byteBuffer.position(currentPos);
             AppendMessageResult result;
             if (messageExt instanceof MessageExtBatch && !((MessageExtBatch) messageExt).isInnerBatch()) {
                 // traditional batch message
+                //                批量消息序列化后组装映射的buffer
                 result = cb.doAppend(this.getFileFromOffset(), byteBuffer, this.fileSize - currentPos,
                         (MessageExtBatch) messageExt, putMessageContext);
             } else if (messageExt instanceof MessageExtBrokerInner) {
                 // traditional single message or newly introduced inner-batch message
+                //                消息序列化后组装映射的buffer=》
                 result = cb.doAppend(this.getFileFromOffset(), byteBuffer, this.fileSize - currentPos,
                         (MessageExtBrokerInner) messageExt, putMessageContext);
             } else {
@@ -253,8 +291,10 @@ public class DefaultMappedFile extends AbstractMappedFile {
 
         if ((currentPos + remaining) <= this.fileSize) {
             try {
+                //设置写的起始位置
                 this.fileChannel.position(currentPos);
                 while (data.hasRemaining()) {
+                    //写入
                     this.fileChannel.write(data);
                 }
             } catch (Throwable e) {
@@ -292,29 +332,37 @@ public class DefaultMappedFile extends AbstractMappedFile {
     }
 
     /**
+     *  flush方法比较简单，就是将fileChannel中的数据写入文件中。
+     *
      * @return The current flushed position
      */
     @Override
     public int flush(final int flushLeastPages) {
         if (this.isAbleToFlush(flushLeastPages)) {
+            //检查文件是否有效，也就是有引用，并添加引用
             if (this.hold()) {
+                //获取写入的位置
                 int value = getReadPosition();
 
                 try {
                     this.mappedByteBufferAccessCountSinceLastSwap++;
 
                     //We only append data to fileChannel or mappedByteBuffer, never both.
+                    //如果writeBuffer不为null，说明用了临时存储池，说明前面已经把信息写入了writeBuffer了，直接刷新到磁盘就可以。
+                    //fileChannel的位置不为0，说明已经设置了buffer进去了，直接刷新到磁盘
                     if (writeBuffer != null || this.fileChannel.position() != 0) {
                         this.fileChannel.force(false);
                     } else {
+                        //如果数据在mappedByteBuffer中，则刷新mappedByteBuffer数据到磁盘
                         this.mappedByteBuffer.force();
                     }
                     this.lastFlushTime = System.currentTimeMillis();
                 } catch (Throwable e) {
                     log.error("Error occurred when force data to disk.", e);
                 }
-
+                //设置已经刷新的值
                 FLUSHED_POSITION_UPDATER.set(this, value);
+                //释放引用
                 this.release();
             } else {
                 log.warn("in flush, hold failed, flush offset = " + FLUSHED_POSITION_UPDATER.get(this));
@@ -324,15 +372,31 @@ public class DefaultMappedFile extends AbstractMappedFile {
         return this.getFlushedPosition();
     }
 
+    /**
+     * 这里的commit方法的作用就是把前面写到缓冲中的数据提交到fileChannel中。这里存在两种情况，
+     * 一种是使用堆外内存的缓冲，一种是使用内存映射的缓冲。两者的处理方式是不一样的。
+     *
+     * @param commitLeastPages the least pages to commit
+     * @return
+     */
     @Override
     public int commit(final int commitLeastPages) {
+        /**
+         * writeBuffer 为  null的情况下，说明没有使用临时存储池，使用的是mappedByteBuffer也就是内存映射的方式，
+         * 直接写到映射区域中的，那么这个时候就不需要写入的fileChannel了。直接返回写入的位置作为已经提交的位置。
+         *
+         * writeBuffer 不为  null，说明用的是临时存储池，使用的堆外内存，那么这个时候需要先把信息提交到fileChannel中
+         */
         if (writeBuffer == null) {
             //no need to commit data to file channel, so just regard wrotePosition as committedPosition.
             return WROTE_POSITION_UPDATER.get(this);
         }
+        //检查是否需要刷盘
         if (this.isAbleToCommit(commitLeastPages)) {
+            //检查当前文件是不是有效，就是当前文件还存在引用
             if (this.hold()) {
                 commit0();
+                //引用次数减1
                 this.release();
             } else {
                 log.warn("in commit, hold failed, commit offset = " + COMMITTED_POSITION_UPDATER.get(this));
@@ -344,14 +408,16 @@ public class DefaultMappedFile extends AbstractMappedFile {
             this.transientStorePool.returnBuffer(writeBuffer);
             this.writeBuffer = null;
         }
-
+        //获取已经刷新的位置
         return COMMITTED_POSITION_UPDATER.get(this);
     }
 
     protected void commit0() {
+        //获取已经写入的数据的位置
         int writePos = WROTE_POSITION_UPDATER.get(this);
+        //获取上次提交的位置
         int lastCommittedPosition = COMMITTED_POSITION_UPDATER.get(this);
-
+        //如果还有没有提交的数据，则进行写入
         if (writePos - lastCommittedPosition > 0) {
             try {
                 ByteBuffer byteBuffer = writeBuffer.slice();
@@ -411,13 +477,23 @@ public class DefaultMappedFile extends AbstractMappedFile {
         return this.fileSize == WROTE_POSITION_UPDATER.get(this);
     }
 
+    /**
+     * 读取数据
+     *
+     * @param pos  the given position
+     * @param size the size of the returned sub-region
+     * @return
+     */
     @Override
     public SelectMappedBufferResult selectMappedBuffer(int pos, int size) {
+        //获取提交的位置
         int readPosition = getReadPosition();
+        //如果要读取的信息在已经提交的信息中，就进行读取
         if ((pos + size) <= readPosition) {
+            //检查文件是否有效
             if (this.hold()) {
                 this.mappedByteBufferAccessCountSinceLastSwap++;
-
+                //读取数据然后返回
                 ByteBuffer byteBuffer = this.mappedByteBuffer.slice();
                 byteBuffer.position(pos);
                 ByteBuffer byteBufferNew = byteBuffer.slice();
@@ -435,14 +511,22 @@ public class DefaultMappedFile extends AbstractMappedFile {
         return null;
     }
 
+    /**
+     * 获取文件读取的位置
+     *
+     * @param pos the given position
+     * @return
+     */
     @Override
     public SelectMappedBufferResult selectMappedBuffer(int pos) {
         int readPosition = getReadPosition();
         if (pos < readPosition && pos >= 0) {
             if (this.hold()) {
+                //创建新的缓冲区
                 this.mappedByteBufferAccessCountSinceLastSwap++;
                 ByteBuffer byteBuffer = this.mappedByteBuffer.slice();
                 byteBuffer.position(pos);
+                //获取指定位置到最新提交的位置之间的数据
                 int size = readPosition - pos;
                 ByteBuffer byteBufferNew = byteBuffer.slice();
                 byteBufferNew.limit(size);
@@ -453,6 +537,12 @@ public class DefaultMappedFile extends AbstractMappedFile {
         return null;
     }
 
+    /**
+     * 清除内存映射
+     *
+     * @param currentRef
+     * @return
+     */
     @Override
     public boolean cleanup(final long currentRef) {
         if (this.isAvailable()) {
@@ -466,27 +556,38 @@ public class DefaultMappedFile extends AbstractMappedFile {
                     + " have cleanup, do not do it again.");
             return true;
         }
-
+        //        清除映射缓冲区=》
         UtilAll.cleanBuffer(this.mappedByteBuffer);
         UtilAll.cleanBuffer(this.mappedByteBufferWaitToClean);
         this.mappedByteBufferWaitToClean = null;
+        //        减少映射文件所占虚拟内存
         TOTAL_MAPPED_VIRTUAL_MEMORY.addAndGet(this.fileSize * (-1));
+        //        改变映射文件数量
         TOTAL_MAPPED_FILES.decrementAndGet();
         log.info("unmap file[REF:" + currentRef + "] " + this.fileName + " OK");
         return true;
     }
 
+    /**
+     * 删除文件
+     *
+     * @param intervalForcibly If {@code true} then this method will destroy the file forcibly and ignore the reference
+     * @return
+     */
     @Override
     public boolean destroy(final long intervalForcibly) {
+        //        =》删除引用
         this.shutdown(intervalForcibly);
-
+        //已经清楚了文件的引用
         if (this.isCleanupOver()) {
             try {
                 long lastModified = getLastModifiedTimestamp();
+                //                关闭文件channel
                 this.fileChannel.close();
                 log.info("close file channel " + this.fileName + " OK");
 
                 long beginTime = System.currentTimeMillis();
+                //                删除文件
                 boolean result = this.file.delete();
                 log.info("delete file[REF:" + this.getRefCount() + "] " + this.fileName
                         + (result ? " OK, " : " Failed, ") + "W:" + this.getWrotePosition() + " M:"

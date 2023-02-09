@@ -22,8 +22,15 @@ import org.apache.rocketmq.client.producer.SendResult;
 import org.apache.rocketmq.common.message.Message;
 import org.apache.rocketmq.remoting.common.RemotingHelper;
 
-/**
+/**https://blog.csdn.net/lindonglian/article/details/115175098
+ * https://rocketmq.apache.org/zh/docs/featureBehavior/01normalmessage
  * This class demonstrates how to send messages to brokers using provided {@link DefaultMQProducer}.
+ *
+ * 发送消息和接受消息需要设置公网IP
+ *
+ * nohup sh bin/mqbroker -n 82.156.185.84:9876 --enable-proxy &
+ *
+ * nohup ./bin/mqnamesrv -n 82.156.185.84:9876 &
  */
 public class Producer {
 
@@ -32,7 +39,7 @@ public class Producer {
      */
     public static final int MESSAGE_COUNT = 1000;
     public static final String PRODUCER_GROUP = "please_rename_unique_group_name";
-    public static final String DEFAULT_NAMESRVADDR = "127.0.0.1:9876";
+    public static final String DEFAULT_NAMESRVADDR = "82.156.185.84:9876";
     public static final String TOPIC = "TopicTest";
     public static final String TAG = "TagA";
 
@@ -42,6 +49,8 @@ public class Producer {
          * Instantiate with a producer group name.
          */
         DefaultMQProducer producer = new DefaultMQProducer(PRODUCER_GROUP);
+
+
 
         /*
          * Specify name server addresses.
@@ -54,7 +63,7 @@ public class Producer {
          * </pre>
          */
         // Uncomment the following line while debugging, namesrvAddr should be set to your local address
-//        producer.setNamesrvAddr(DEFAULT_NAMESRVADDR);
+        producer.setNamesrvAddr(DEFAULT_NAMESRVADDR);
 
         /*
          * Launch the instance.
@@ -68,8 +77,8 @@ public class Producer {
                  * Create a message instance, specifying topic, tag and message body.
                  */
                 Message msg = new Message(TOPIC /* Topic */,
-                    TAG /* Tag */,
-                    ("Hello RocketMQ " + i).getBytes(RemotingHelper.DEFAULT_CHARSET) /* Message body */
+                        TAG /* Tag */,
+                        ("Hello RocketMQ " + i).getBytes(RemotingHelper.DEFAULT_CHARSET) /* Message body */
                 );
 
                 /*
