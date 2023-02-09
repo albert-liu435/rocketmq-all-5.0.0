@@ -18,6 +18,9 @@ package org.apache.rocketmq.common;
 
 import java.io.File;
 
+/**
+ * controller配置信息
+ */
 public class ControllerConfig {
 
     private String rocketmqHome = System.getProperty(MixAll.ROCKETMQ_HOME_PROPERTY, System.getenv(MixAll.ROCKETMQ_HOME_ENV));

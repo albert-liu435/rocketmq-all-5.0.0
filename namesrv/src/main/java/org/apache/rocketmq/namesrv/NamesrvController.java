@@ -25,6 +25,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+
 import org.apache.commons.lang3.concurrent.BasicThreadFactory;
 import org.apache.rocketmq.common.Configuration;
 import org.apache.rocketmq.common.ThreadFactoryImpl;
@@ -117,10 +118,10 @@ public class NamesrvController {
 
     private void startScheduleService() {
         this.scanExecutorService.scheduleAtFixedRate(NamesrvController.this.routeInfoManager::scanNotActiveBroker,
-            5, this.namesrvConfig.getScanNotActiveBrokerInterval(), TimeUnit.MILLISECONDS);
+                5, this.namesrvConfig.getScanNotActiveBrokerInterval(), TimeUnit.MILLISECONDS);
 
         this.scheduledExecutorService.scheduleAtFixedRate(NamesrvController.this.kvConfigManager::printAllPeriodically,
-            1, 10, TimeUnit.MINUTES);
+                1, 10, TimeUnit.MINUTES);
 
         this.scheduledExecutorService.scheduleAtFixedRate(() -> {
             try {
@@ -239,7 +240,7 @@ public class NamesrvController {
         }
 
         this.remotingClient.updateNameServerAddressList(Collections.singletonList(RemotingUtil.getLocalAddress()
-            + ":" + nettyServerConfig.getListenPort()));
+                + ":" + nettyServerConfig.getListenPort()));
         this.remotingClient.start();
 
         if (this.fileWatchService != null) {

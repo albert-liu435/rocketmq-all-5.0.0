@@ -51,6 +51,7 @@ import org.slf4j.LoggerFactory;
 public class NamesrvStartup {
 
     private static InternalLogger log;
+    // 用于保存、读取配置文件
     private static Properties properties = null;
     private static NamesrvConfig namesrvConfig = null;
     private static NettyServerConfig nettyServerConfig = null;
@@ -64,6 +65,10 @@ public class NamesrvStartup {
 
     public static void main0(String[] args) {
         try {
+
+            int length = args.length;
+            System.out.println(length);
+            //解析命令行
             parseCommandlineAndConfigFile(args);
             createAndStartNamesrvController();
         } catch (Throwable e) {
@@ -85,10 +90,12 @@ public class NamesrvStartup {
     }
 
     public static void parseCommandlineAndConfigFile(String[] args) throws Exception {
+        // 设置版本号[rocketmq.remoting.version -> MQVersion.CURRENT_VERSION]
         System.setProperty(RemotingCommand.REMOTING_VERSION_KEY, Integer.toString(MQVersion.CURRENT_VERSION));
         //PackageConflictDetect.detectFastjson();
 
         Options options = ServerUtil.buildCommandlineOptions(new Options());
+        // 用于解析命令行输入参数
         CommandLine commandLine = ServerUtil.parseCmdLine("mqnamesrv", args, buildCommandlineOptions(options), new PosixParser());
         if (null == commandLine) {
             System.exit(-1);
@@ -133,6 +140,10 @@ public class NamesrvStartup {
             System.exit(-2);
         }
 
+        /**
+         * 初始化Logback日志工厂
+         *          * RocketMQ默认使用Logback作为日志输出
+         */
         LoggerContext lc = (LoggerContext) LoggerFactory.getILoggerFactory();
         JoranConfigurator configurator = new JoranConfigurator();
         configurator.setContext(lc);
@@ -155,9 +166,13 @@ public class NamesrvStartup {
     }
 
     public static NamesrvController createNamesrvController() {
-
+        /**
+         * 初始化NamesrvController
+         * 该类是Name Server的主要控制类
+         */
         final NamesrvController controller = new NamesrvController(namesrvConfig, nettyServerConfig, nettyClientConfig);
         // remember all configs to prevent discard
+        //将全局Properties的内容复制到NamesrvController.Configuration.allConfigs中
         controller.getConfiguration().registerConfig(properties);
         return controller;
     }

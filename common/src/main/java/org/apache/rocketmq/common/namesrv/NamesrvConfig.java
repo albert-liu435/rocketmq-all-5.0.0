@@ -21,8 +21,12 @@
 package org.apache.rocketmq.common.namesrv;
 
 import java.io.File;
+
 import org.apache.rocketmq.common.MixAll;
 
+/**
+ * 配置信息
+ */
 public class NamesrvConfig {
 
     private String rocketmqHome = System.getProperty(MixAll.ROCKETMQ_HOME_PROPERTY, System.getenv(MixAll.ROCKETMQ_HOME_ENV));
@@ -58,7 +62,7 @@ public class NamesrvConfig {
 
     /**
      * Support acting master or not.
-     *
+     * <p>
      * The slave can be an acting master when master node is down to support following operations:
      * 1. support lock/unlock message queue operation.
      * 2. support searchOffset, query maxOffset/minOffset operation.

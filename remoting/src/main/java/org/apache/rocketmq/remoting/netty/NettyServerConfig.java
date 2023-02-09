@@ -16,13 +16,18 @@
  */
 package org.apache.rocketmq.remoting.netty;
 
+/**
+ * netty服务配置信息
+ */
 public class NettyServerConfig implements Cloneable {
 
     /**
+     * 绑定的IP地址
      * Bind address may be hostname, IPv4 or IPv6.
      * By default, it's wildcard address, listening all network interfaces.
      */
     private String bindAddress = "0.0.0.0";
+    //监听端口
     private int listenPort = 0;
     private int serverWorkerThreads = 8;
     private int serverCallbackExecutorThreads = 0;
@@ -40,8 +45,8 @@ public class NettyServerConfig implements Cloneable {
 
     /**
      * make install
-     *
-     *
+     * <p>
+     * <p>
      * ../glibc-2.10.1/configure \ --prefix=/usr \ --with-headers=/usr/include \
      * --host=x86_64-linux-gnu \ --build=x86_64-pc-linux-gnu \ --without-gd
      */
