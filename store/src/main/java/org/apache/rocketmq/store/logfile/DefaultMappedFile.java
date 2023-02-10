@@ -60,38 +60,50 @@ public class DefaultMappedFile extends AbstractMappedFile {
 
 
     //pageCache的大小
+    //OSpage大小，4K。
     public static final int OS_PAGE_SIZE = 1024 * 4;
     protected static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
     //文件已使用的映射虚拟内存
+    //类变量，所有 MappedFile 实例已使用字节总数。
     protected static final AtomicLong TOTAL_MAPPED_VIRTUAL_MEMORY = new AtomicLong(0);
     //映射额文件个数
+    //MappedFile 个数。
     protected static final AtomicInteger TOTAL_MAPPED_FILES = new AtomicInteger(0);
 
     protected static final AtomicIntegerFieldUpdater<DefaultMappedFile> WROTE_POSITION_UPDATER;
     protected static final AtomicIntegerFieldUpdater<DefaultMappedFile> COMMITTED_POSITION_UPDATER;
     protected static final AtomicIntegerFieldUpdater<DefaultMappedFile> FLUSHED_POSITION_UPDATER;
     //已经写入的位置
+    //当前MappedFile对象当前写指针。
     protected volatile int wrotePosition;
     // 提交完成位置
+    //当前提交的指针。
     protected volatile int committedPosition;
     //刷新完成位置
+    //当前刷写到磁盘的指针。
     protected volatile int flushedPosition;
     //文件大小
+    //文件总大小。
     protected int fileSize;
     //创建MappedByteBuffer用的
+    //文件通道。
     protected FileChannel fileChannel;
     /**
      * Message will put to here first, and then reput to FileChannel if writeBuffer is not null.
      * 消息将首先放在这里，如果writeBuffer不为空，则再放到FileChannel。
+     * 如果开启了transientStorePoolEnable，消息会写入堆外内存，然后提交到 PageCache 并最终刷写到磁盘。
      */
     protected ByteBuffer writeBuffer = null;
+    //ByteBuffer的缓冲池，堆外内存，transientStorePoolEnable 为 true 时生效。
     protected TransientStorePool transientStorePool = null;
     //文件名
     protected String fileName;
-    //文件开始offset
+    //文件开始offset,文件序号,代表该文件代表的文件偏移量。
     protected long fileFromOffset;
     protected File file;
+    //对应操作系统的 PageCache。
     protected MappedByteBuffer mappedByteBuffer;
+    //最后一次存储时间戳。
     protected volatile long storeTimestamp = 0;
     protected boolean firstCreateInQueue = false;
     private long lastFlushTime = -1L;
@@ -217,7 +229,7 @@ public class DefaultMappedFile extends AbstractMappedFile {
     }
 
     /**
-     * 拼接消息的方法，供commitlog使用
+     * 拼接消息的方法，供commitlog使用.即消息的写入
      *
      * @param msg
      * @param cb
@@ -248,6 +260,7 @@ public class DefaultMappedFile extends AbstractMappedFile {
             ByteBuffer byteBuffer = appendMessageBuffer().slice();
             byteBuffer.position(currentPos);
             AppendMessageResult result;
+            //根据消息类型，是批量消息还是单个消息，进入相应的处理
             if (messageExt instanceof MessageExtBatch && !((MessageExtBatch) messageExt).isInnerBatch()) {
                 // traditional batch message
                 //                批量消息序列化后组装映射的buffer

@@ -785,6 +785,7 @@ public class CommitLog implements Swappable {
     public CompletableFuture<PutMessageResult> asyncPutMessage(final MessageExtBrokerInner msg) {
         // Set the storage time
         if (!defaultMessageStore.getMessageStoreConfig().isDuplicationEnable()) {
+            // Set the storage time
             msg.setStoreTimestamp(System.currentTimeMillis());
         }
 
@@ -967,6 +968,7 @@ public class CommitLog implements Swappable {
 
         long elapsedTimeInLock = 0;
         MappedFile unlockMappedFile = null;
+        //获取一个 MappedFile 对象，内存映射的具体实现。
         MappedFile mappedFile = this.mappedFileQueue.getLastMappedFile();
 
         long currOffset;
@@ -1673,13 +1675,21 @@ public class CommitLog implements Swappable {
             this.msgStoreItemMemory = ByteBuffer.allocate(END_FILE_MIN_BLANK_LENGTH);
         }
 
+        /**
+         * @param fileFromOffset    该文件在整个文件序列中的偏移量。
+         * @param byteBuffer        byteBuffer，NIO 字节容器。
+         * @param maxBlank          最大可写字节数。最大可写字节数。
+         * @param msgInner          消息内部封装实体。
+         * @param putMessageContext
+         * @return
+         */
         public AppendMessageResult doAppend(final long fileFromOffset, final ByteBuffer byteBuffer, final int maxBlank,
                                             final MessageExtBrokerInner msgInner, PutMessageContext putMessageContext) {
             // STORETIMESTAMP + STOREHOSTADDRESS + OFFSET <br>
 
             // PHY OFFSET
             long wroteOffset = fileFromOffset + byteBuffer.position();
-
+            //创建msgId，底层存储由16个字节表示
             Supplier<String> msgIdSupplier = () -> {
                 int sysflag = msgInner.getSysFlag();
                 int msgIdLen = (sysflag & MessageSysFlag.STOREHOSTADDRESS_V6_FLAG) == 0 ? 4 + 4 + 8 : 16 + 4 + 8;
