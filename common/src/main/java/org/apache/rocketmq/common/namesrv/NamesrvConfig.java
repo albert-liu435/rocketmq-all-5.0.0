@@ -26,6 +26,7 @@ import org.apache.rocketmq.common.MixAll;
 
 /**
  * 配置信息
+ * NamesrvConfig,主要指定 nameserver 的相关配置属性：
  */
 public class NamesrvConfig {
 
@@ -34,6 +35,7 @@ public class NamesrvConfig {
     private String configStorePath = System.getProperty("user.home") + File.separator + "namesrv" + File.separator + "namesrv.properties";
     private String productEnvName = "center";
     private boolean clusterTest = false;
+    //是否开启顺序消息功能，默认为false。
     private boolean orderMessageEnable = false;
     private boolean returnOrderTopicConfigToBroker = true;
 

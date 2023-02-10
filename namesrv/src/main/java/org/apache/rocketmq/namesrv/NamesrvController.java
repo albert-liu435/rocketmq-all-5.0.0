@@ -54,6 +54,9 @@ import org.apache.rocketmq.remoting.netty.RequestTask;
 import org.apache.rocketmq.remoting.netty.TlsSystemConfig;
 import org.apache.rocketmq.srvutil.FileWatchService;
 
+/**
+ * NameserController 是 NameServer 模块的核心控制类。
+ */
 public class NamesrvController {
     private static final InternalLogger LOGGER = InternalLoggerFactory.getLogger(LoggerName.NAMESRV_LOGGER_NAME);
     private static final InternalLogger WATER_MARK_LOG = InternalLoggerFactory.getLogger(LoggerName.NAMESRV_WATER_MARK_LOGGER_NAME);
@@ -62,19 +65,23 @@ public class NamesrvController {
 
     private final NettyServerConfig nettyServerConfig;
     private final NettyClientConfig nettyClientConfig;
-
+    //NameServer 定时任务执行线程池，默认定时执行两个任务：
+    //
+    //任务1、每隔 10s 扫描 broker ,维护当前存活的Broker信息。
+    //任务2、每隔 10s 打印KVConfig 信息。
     private final ScheduledExecutorService scheduledExecutorService = new ScheduledThreadPoolExecutor(1,
             new BasicThreadFactory.Builder().namingPattern("NSScheduledThread").daemon(true).build());
 
     private final ScheduledExecutorService scanExecutorService = new ScheduledThreadPoolExecutor(1,
             new BasicThreadFactory.Builder().namingPattern("NSScanScheduledThread").daemon(true).build());
-
+    //读取或变更NameServer的配置属性，加载 NamesrvConfig 中配置的配置文件到内存，此类一个亮点就是使用轻量级的非线程安全容器，再结合读写锁对资源读写进行保护。尽最大程度提高线程的并发度。
     private final KVConfigManager kvConfigManager;
+    //NameServer 数据的载体，记录 Broker、Topic 等信息。
     private final RouteInfoManager routeInfoManager;
 
     private RemotingClient remotingClient;
     private RemotingServer remotingServer;
-
+    //BrokerHouseKeepingService 实现 ChannelEventListener接口，可以说是通道在发送异常时的回调方法（Nameserver与 Broker的连接通道在关闭、通道发送异常、通道空闲时），在上述数据结构中移除已宕机的 Broker。
     private final BrokerHousekeepingService brokerHousekeepingService;
 
     private ExecutorService defaultExecutor;
@@ -101,8 +108,15 @@ public class NamesrvController {
         this.configuration.setStorePathFromConfig(this.namesrvConfig, "configStorePath");
     }
 
+    /**
+     * Namesrv启动初始化
+     *
+     * @return
+     */
     public boolean initialize() {
+        //加载config
         loadConfig();
+        //初始化网络组件
         initiateNetworkComponents();
         initiateThreadExecutors();
         registerProcessor();
@@ -117,12 +131,14 @@ public class NamesrvController {
     }
 
     private void startScheduleService() {
+        //任务1、每隔 10s 扫描 broker ,维护当前存活的Broker信息。
         this.scanExecutorService.scheduleAtFixedRate(NamesrvController.this.routeInfoManager::scanNotActiveBroker,
                 5, this.namesrvConfig.getScanNotActiveBrokerInterval(), TimeUnit.MILLISECONDS);
 
         this.scheduledExecutorService.scheduleAtFixedRate(NamesrvController.this.kvConfigManager::printAllPeriodically,
                 1, 10, TimeUnit.MINUTES);
 
+        //任务2、每隔 10s 打印KVConfig 信息。
         this.scheduledExecutorService.scheduleAtFixedRate(() -> {
             try {
                 NamesrvController.this.printWaterMark();
@@ -133,11 +149,13 @@ public class NamesrvController {
     }
 
     private void initiateNetworkComponents() {
+
         this.remotingServer = new NettyRemotingServer(this.nettyServerConfig, this.brokerHousekeepingService);
         this.remotingClient = new NettyRemotingClient(this.nettyClientConfig);
     }
 
     private void initiateThreadExecutors() {
+        //创建一个线程容量为 serverWorkerThreads 的固定长度的线程池，该线程池供 DefaultRequestProcessor 类使用，实现具体的默认的请求命令处理
         this.defaultThreadPoolQueue = new LinkedBlockingQueue<>(this.namesrvConfig.getDefaultThreadPoolQueueCapacity());
         this.defaultExecutor = new ThreadPoolExecutor(this.namesrvConfig.getDefaultThreadPoolNums(), this.namesrvConfig.getDefaultThreadPoolNums(), 1000 * 60, TimeUnit.MILLISECONDS, this.defaultThreadPoolQueue, new ThreadFactoryImpl("RemotingExecutorThread_")) {
             @Override
@@ -215,6 +233,7 @@ public class NamesrvController {
     }
 
     private void registerProcessor() {
+
         if (namesrvConfig.isClusterTest()) {
 
             this.remotingServer.registerDefaultProcessor(new ClusterTestRequestProcessor(this, namesrvConfig.getProductEnvName()), this.defaultExecutor);

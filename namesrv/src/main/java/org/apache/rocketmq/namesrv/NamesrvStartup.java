@@ -46,6 +46,8 @@ import org.apache.rocketmq.srvutil.ShutdownHookThread;
 import org.slf4j.LoggerFactory;
 
 /**
+ * NameServer相当于配置中心，维护Broker集群、Broker信息、Broker存活信息、主题与队列信息等。NameServer彼此之间不通信，每个Broker与集群内所有的Nameserver保持长连接。
+ * <p>
  * nameserver启动类
  */
 public class NamesrvStartup {
@@ -53,6 +55,7 @@ public class NamesrvStartup {
     private static InternalLogger log;
     // 用于保存、读取配置文件
     private static Properties properties = null;
+    //NamesrvConfig,主要指定 nameserver 的相关配置属性：
     private static NamesrvConfig namesrvConfig = null;
     private static NettyServerConfig nettyServerConfig = null;
     private static NettyClientConfig nettyClientConfig = null;
