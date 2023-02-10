@@ -96,7 +96,7 @@ public abstract class NettyRemotingAbstract {
      */
     protected volatile SslContext sslContext;
 
-    /**
+    /**自定义RPC钩子
      * custom rpc hooks
      */
     protected List<RPCHook> rpcHooks = new ArrayList<>();

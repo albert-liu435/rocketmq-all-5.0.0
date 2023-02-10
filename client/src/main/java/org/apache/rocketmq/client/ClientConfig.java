@@ -39,9 +39,12 @@ public class ClientConfig {
     public static final String SEND_MESSAGE_WITH_VIP_CHANNEL_PROPERTY = "com.rocketmq.sendMessageWithVIPChannel";
     public static final String DECODE_READ_BODY = "com.rocketmq.read.body";
     public static final String DECODE_DECOMPRESS_BODY = "com.rocketmq.decompress.body";
+    //nameserv地址
     private String namesrvAddr = NameServerAddressUtils.getNameServerAddresses();
     private String clientIP = RemotingUtil.getLocalAddress();
+    //实例名称
     private String instanceName = System.getProperty("rocketmq.client.name", "DEFAULT");
+    //netty客户端回调线程 数
     private int clientCallbackExecutorThreads = Runtime.getRuntime().availableProcessors();
     protected String namespace;
     private boolean namespaceInitialized = false;
@@ -78,6 +81,11 @@ public class ClientConfig {
      */
     protected boolean enableStreamRequestType = false;
 
+    /**
+     * 构建客服端ID
+     *
+     * @return
+     */
     public String buildMQClientId() {
         StringBuilder sb = new StringBuilder();
         sb.append(this.getClientIP());
