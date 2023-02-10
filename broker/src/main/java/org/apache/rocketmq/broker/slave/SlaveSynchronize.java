@@ -31,9 +31,13 @@ import org.apache.rocketmq.logging.InternalLoggerFactory;
 import org.apache.rocketmq.store.config.StorePathConfigHelper;
 
 import java.io.IOException;
+
 import org.apache.rocketmq.store.timer.TimerCheckpoint;
 import org.apache.rocketmq.store.timer.TimerMetrics;
 
+/**
+ * 从broker 同步进度管理类
+ */
 public class SlaveSynchronize {
     private static final InternalLogger LOGGER = InternalLoggerFactory.getLogger(LoggerName.BROKER_LOGGER_NAME);
     private final BrokerController brokerController;
@@ -71,15 +75,15 @@ public class SlaveSynchronize {
         if (masterAddrBak != null && !masterAddrBak.equals(brokerController.getBrokerAddr())) {
             try {
                 TopicConfigAndMappingSerializeWrapper topicWrapper =
-                    this.brokerController.getBrokerOuterAPI().getAllTopicConfig(masterAddrBak);
+                        this.brokerController.getBrokerOuterAPI().getAllTopicConfig(masterAddrBak);
                 if (!this.brokerController.getTopicConfigManager().getDataVersion()
-                    .equals(topicWrapper.getDataVersion())) {
+                        .equals(topicWrapper.getDataVersion())) {
 
                     this.brokerController.getTopicConfigManager().getDataVersion()
-                        .assignNewOne(topicWrapper.getDataVersion());
+                            .assignNewOne(topicWrapper.getDataVersion());
                     this.brokerController.getTopicConfigManager().getTopicConfigTable().clear();
                     this.brokerController.getTopicConfigManager().getTopicConfigTable()
-                        .putAll(topicWrapper.getTopicConfigTable());
+                            .putAll(topicWrapper.getTopicConfigTable());
                     this.brokerController.getTopicConfigManager().persist();
                 }
                 if (topicWrapper.getTopicQueueMappingDetailMap() != null
@@ -103,9 +107,9 @@ public class SlaveSynchronize {
         if (masterAddrBak != null && !masterAddrBak.equals(brokerController.getBrokerAddr())) {
             try {
                 ConsumerOffsetSerializeWrapper offsetWrapper =
-                    this.brokerController.getBrokerOuterAPI().getAllConsumerOffset(masterAddrBak);
+                        this.brokerController.getBrokerOuterAPI().getAllConsumerOffset(masterAddrBak);
                 this.brokerController.getConsumerOffsetManager().getOffsetTable()
-                    .putAll(offsetWrapper.getOffsetTable());
+                        .putAll(offsetWrapper.getOffsetTable());
                 this.brokerController.getConsumerOffsetManager().getDataVersion().assignNewOne(offsetWrapper.getDataVersion());
                 this.brokerController.getConsumerOffsetManager().persist();
                 LOGGER.info("Update slave consumer offset from master, {}", masterAddrBak);
@@ -120,12 +124,12 @@ public class SlaveSynchronize {
         if (masterAddrBak != null && !masterAddrBak.equals(brokerController.getBrokerAddr())) {
             try {
                 String delayOffset =
-                    this.brokerController.getBrokerOuterAPI().getAllDelayOffset(masterAddrBak);
+                        this.brokerController.getBrokerOuterAPI().getAllDelayOffset(masterAddrBak);
                 if (delayOffset != null) {
 
                     String fileName =
-                        StorePathConfigHelper.getDelayOffsetStorePath(this.brokerController
-                            .getMessageStoreConfig().getStorePathRootDir());
+                            StorePathConfigHelper.getDelayOffsetStorePath(this.brokerController
+                                    .getMessageStoreConfig().getStorePathRootDir());
                     try {
                         MixAll.string2File(delayOffset, fileName);
                         this.brokerController.getScheduleMessageService().load();
@@ -142,21 +146,21 @@ public class SlaveSynchronize {
 
     private void syncSubscriptionGroupConfig() {
         String masterAddrBak = this.masterAddr;
-        if (masterAddrBak != null  && !masterAddrBak.equals(brokerController.getBrokerAddr())) {
+        if (masterAddrBak != null && !masterAddrBak.equals(brokerController.getBrokerAddr())) {
             try {
                 SubscriptionGroupWrapper subscriptionWrapper =
-                    this.brokerController.getBrokerOuterAPI()
-                        .getAllSubscriptionGroupConfig(masterAddrBak);
+                        this.brokerController.getBrokerOuterAPI()
+                                .getAllSubscriptionGroupConfig(masterAddrBak);
 
                 if (!this.brokerController.getSubscriptionGroupManager().getDataVersion()
-                    .equals(subscriptionWrapper.getDataVersion())) {
+                        .equals(subscriptionWrapper.getDataVersion())) {
                     SubscriptionGroupManager subscriptionGroupManager =
-                        this.brokerController.getSubscriptionGroupManager();
+                            this.brokerController.getSubscriptionGroupManager();
                     subscriptionGroupManager.getDataVersion().assignNewOne(
-                        subscriptionWrapper.getDataVersion());
+                            subscriptionWrapper.getDataVersion());
                     subscriptionGroupManager.getSubscriptionGroupTable().clear();
                     subscriptionGroupManager.getSubscriptionGroupTable().putAll(
-                        subscriptionWrapper.getSubscriptionGroupTable());
+                            subscriptionWrapper.getSubscriptionGroupTable());
                     subscriptionGroupManager.persist();
                     LOGGER.info("Update slave Subscription Group from master, {}", masterAddrBak);
                 }
@@ -168,7 +172,7 @@ public class SlaveSynchronize {
 
     private void syncMessageRequestMode() {
         String masterAddrBak = this.masterAddr;
-        if (masterAddrBak != null  && !masterAddrBak.equals(brokerController.getBrokerAddr())) {
+        if (masterAddrBak != null && !masterAddrBak.equals(brokerController.getBrokerAddr())) {
             try {
                 MessageRequestModeSerializeWrapper messageRequestModeSerializeWrapper =
                         this.brokerController.getBrokerOuterAPI().getAllMessageRequestMode(masterAddrBak);
@@ -208,7 +212,7 @@ public class SlaveSynchronize {
             try {
                 if (null != brokerController.getMessageStore().getTimerMessageStore()) {
                     TimerMetrics.TimerMetricsSerializeWrapper metricsSerializeWrapper =
-                        this.brokerController.getBrokerOuterAPI().getTimerMetrics(masterAddrBak);
+                            this.brokerController.getBrokerOuterAPI().getTimerMetrics(masterAddrBak);
                     if (!brokerController.getMessageStore().getTimerMessageStore().getTimerMetrics().getDataVersion().equals(metricsSerializeWrapper.getDataVersion())) {
                         this.brokerController.getMessageStore().getTimerMessageStore().getTimerMetrics().getDataVersion().assignNewOne(metricsSerializeWrapper.getDataVersion());
                         this.brokerController.getMessageStore().getTimerMessageStore().getTimerMetrics().getTimingCount().clear();

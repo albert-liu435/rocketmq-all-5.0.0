@@ -131,6 +131,9 @@ import static org.apache.rocketmq.common.protocol.ResponseCode.CONTROLLER_NOT_LE
 import static org.apache.rocketmq.common.protocol.ResponseCode.CONTROLLER_BROKER_METADATA_NOT_EXIST;
 import static org.apache.rocketmq.remoting.protocol.RemotingSysResponseCode.SUCCESS;
 
+/**
+ * broker对外api
+ */
 public class BrokerOuterAPI {
     private static final InternalLogger LOGGER = InternalLoggerFactory.getLogger(LoggerName.BROKER_LOGGER_NAME);
     private final RemotingClient remotingClient;

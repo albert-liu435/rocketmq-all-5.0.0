@@ -25,6 +25,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicLong;
+
 import org.apache.rocketmq.broker.BrokerController;
 import org.apache.rocketmq.broker.BrokerPathConfigHelper;
 import org.apache.rocketmq.common.ConfigManager;
@@ -35,6 +36,9 @@ import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.logging.InternalLoggerFactory;
 import org.apache.rocketmq.remoting.protocol.RemotingSerializable;
 
+/**
+ * Consumer消费者的消费进度记录管理类
+ */
 public class ConsumerOffsetManager extends ConfigManager {
     private static final InternalLogger LOG = InternalLoggerFactory.getLogger(LoggerName.BROKER_LOGGER_NAME);
     public static final String TOPIC_GROUP_SEPARATOR = "@";
@@ -42,7 +46,7 @@ public class ConsumerOffsetManager extends ConfigManager {
     private DataVersion dataVersion = new DataVersion();
 
     protected ConcurrentMap<String/* topic@group */, ConcurrentMap<Integer, Long>> offsetTable =
-        new ConcurrentHashMap<String, ConcurrentMap<Integer, Long>>(512);
+            new ConcurrentHashMap<String, ConcurrentMap<Integer, Long>>(512);
 
     protected transient BrokerController brokerController;
 
@@ -96,7 +100,7 @@ public class ConsumerOffsetManager extends ConfigManager {
                 String group = arrays[1];
 
                 if (null == brokerController.getConsumerManager().findSubscriptionData(group, topic)
-                    && this.offsetBehindMuchThanData(topic, next.getValue())) {
+                        && this.offsetBehindMuchThanData(topic, next.getValue())) {
                     it.remove();
                     LOG.warn("remove topic offset, {}", topicAtGroup);
                 }
@@ -177,7 +181,7 @@ public class ConsumerOffsetManager extends ConfigManager {
     }
 
     public void commitOffset(final String clientHost, final String group, final String topic, final int queueId,
-        final long offset) {
+                             final long offset) {
         // topic@group
         String key = topic + TOPIC_GROUP_SEPARATOR + group;
         this.commitOffset(clientHost, key, queueId, offset);

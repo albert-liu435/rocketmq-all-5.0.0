@@ -38,6 +38,9 @@ import org.apache.rocketmq.remoting.common.RemotingHelper;
 import org.apache.rocketmq.remoting.common.RemotingUtil;
 import org.apache.rocketmq.store.stats.BrokerStatsManager;
 
+/**
+ * 消费者管理类 按照group进行分组，对消费者的id变化进行监听
+ */
 public class ConsumerManager {
     private static final InternalLogger LOGGER = InternalLoggerFactory.getLogger(LoggerName.BROKER_LOGGER_NAME);
     private static final long CHANNEL_EXPIRED_TIMEOUT = 1000 * 120;

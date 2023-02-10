@@ -18,11 +18,13 @@ package org.apache.rocketmq.broker;
 
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.joran.JoranConfigurator;
+
 import java.io.BufferedInputStream;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicInteger;
+
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.Option;
@@ -47,6 +49,9 @@ import org.slf4j.LoggerFactory;
 
 import static org.apache.rocketmq.remoting.netty.TlsSystemConfig.TLS_ENABLE;
 
+/**
+ * broker启动类
+ */
 public class BrokerStartup {
     public static Properties properties = null;
     public static CommandLine commandLine = null;
@@ -55,6 +60,7 @@ public class BrokerStartup {
     public static final SystemConfigFileHelper CONFIG_FILE_HELPER = new SystemConfigFileHelper();
 
     public static void main(String[] args) {
+        //创建createBrokerController然后启动
         start(createBrokerController(args));
     }
 
@@ -64,7 +70,7 @@ public class BrokerStartup {
             controller.start();
 
             String tip = "The broker[" + controller.getBrokerConfig().getBrokerName() + ", "
-                + controller.getBrokerAddr() + "] boot success. serializeType=" + RemotingCommand.getSerializeTypeConfigInThisServer();
+                    + controller.getBrokerAddr() + "] boot success. serializeType=" + RemotingCommand.getSerializeTypeConfigInThisServer();
 
             if (null != controller.getBrokerConfig().getNamesrvAddr()) {
                 tip += " and name server is " + controller.getBrokerConfig().getNamesrvAddr();
@@ -88,28 +94,32 @@ public class BrokerStartup {
     }
 
     public static BrokerController createBrokerController(String[] args) {
+        //MQ的版本号
         System.setProperty(RemotingCommand.REMOTING_VERSION_KEY, Integer.toString(MQVersion.CURRENT_VERSION));
 
         try {
             //PackageConflictDetect.detectFastjson();
             Options options = ServerUtil.buildCommandlineOptions(new Options());
             commandLine = ServerUtil.parseCmdLine("mqbroker", args, buildCommandlineOptions(options),
-                new DefaultParser());
+                    new DefaultParser());
             if (null == commandLine) {
                 System.exit(-1);
             }
-
+            //相关配置的存储对象
             final BrokerConfig brokerConfig = new BrokerConfig();
             final NettyServerConfig nettyServerConfig = new NettyServerConfig();
             final NettyClientConfig nettyClientConfig = new NettyClientConfig();
-
+            //是否使用TLS （TLS是SSL的升级版本，TLS是SSL的标准化后的产物，有1.0 1.1 1.2三个版本）
             nettyClientConfig.setUseTLS(Boolean.parseBoolean(System.getProperty(TLS_ENABLE,
-                String.valueOf(TlsSystemConfig.tlsMode == TlsMode.ENFORCING))));
+                    String.valueOf(TlsSystemConfig.tlsMode == TlsMode.ENFORCING))));
+            //设置netty的服务端监听的端口 10911
             nettyServerConfig.setListenPort(10911);
+            //消息存储相关的配置
             final MessageStoreConfig messageStoreConfig = new MessageStoreConfig();
-
+            //如果Broker是Slave角色，消息占用内存大小的比率 比默认的40% 还要小 10%
             if (BrokerRole.SLAVE == messageStoreConfig.getBrokerRole()) {
                 int ratio = messageStoreConfig.getAccessMessageInMemoryMaxRatio() - 10;
+                //设置消息的内存最大占比，如果内存占比超过设定值，那么就进行置换
                 messageStoreConfig.setAccessMessageInMemoryMaxRatio(ratio);
             }
 
@@ -147,8 +157,8 @@ public class BrokerStartup {
                     }
                 } catch (Exception e) {
                     System.out.printf(
-                        "The Name Server Address[%s] illegal, please set it as follows, \"127.0.0.1:9876;192.168.0.1:9876\"%n",
-                        namesrvAddr);
+                            "The Name Server Address[%s] illegal, please set it as follows, \"127.0.0.1:9876;192.168.0.1:9876\"%n",
+                            namesrvAddr);
                     System.exit(-3);
                 }
             }
@@ -212,21 +222,22 @@ public class BrokerStartup {
             MixAll.printObjectProperties(log, messageStoreConfig);
 
             brokerConfig.setInBrokerContainer(false);
-
+            //创建BrokerController
             final BrokerController controller = new BrokerController(
-                brokerConfig,
-                nettyServerConfig,
-                nettyClientConfig,
-                messageStoreConfig);
+                    brokerConfig,
+                    nettyServerConfig,
+                    nettyClientConfig,
+                    messageStoreConfig);
             // remember all configs to prevent discard
+            //缓存额外配置
             controller.getConfiguration().registerConfig(properties);
-
+            //初始化BrokerController
             boolean initResult = controller.initialize();
             if (!initResult) {
                 controller.shutdown();
                 System.exit(-3);
             }
-
+            //注册关闭的钩子方法
             Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
                 private volatile boolean hasShutdown = false;
                 private AtomicInteger shutdownTimes = new AtomicInteger(0);

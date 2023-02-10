@@ -17,6 +17,7 @@
 package org.apache.rocketmq.broker.client;
 
 import io.netty.channel.Channel;
+
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -33,15 +34,18 @@ import org.apache.rocketmq.common.utils.ThreadUtils;
 import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.logging.InternalLoggerFactory;
 
+/**
+ * 消费者id变化监听器,主要监听Consumer的注册和下线的事件
+ */
 public class DefaultConsumerIdsChangeListener implements ConsumerIdsChangeListener {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.BROKER_LOGGER_NAME);
     private final BrokerController brokerController;
     private final int cacheSize = 8096;
 
-    private final ScheduledExecutorService scheduledExecutorService =  new ScheduledThreadPoolExecutor(1,
-        ThreadUtils.newGenericThreadFactory("DefaultConsumerIdsChangeListener", true));
+    private final ScheduledExecutorService scheduledExecutorService = new ScheduledThreadPoolExecutor(1,
+            ThreadUtils.newGenericThreadFactory("DefaultConsumerIdsChangeListener", true));
 
-    private ConcurrentHashMap<String,List<Channel>> consumerChannelMap = new ConcurrentHashMap<>(cacheSize);
+    private ConcurrentHashMap<String, List<Channel>> consumerChannelMap = new ConcurrentHashMap<>(cacheSize);
 
     public DefaultConsumerIdsChangeListener(BrokerController brokerController) {
         this.brokerController = brokerController;
@@ -53,7 +57,7 @@ public class DefaultConsumerIdsChangeListener implements ConsumerIdsChangeListen
                     notifyConsumerChange();
                 } catch (Exception e) {
                     log.error(
-                        "DefaultConsumerIdsChangeListen#notifyConsumerChange: unexpected error occurs", e);
+                            "DefaultConsumerIdsChangeListen#notifyConsumerChange: unexpected error occurs", e);
                 }
             }
         }, 30, 15, TimeUnit.SECONDS);
@@ -118,7 +122,7 @@ public class DefaultConsumerIdsChangeListener implements ConsumerIdsChangeListen
                 }
             } catch (Exception e) {
                 log.error("Failed to notify consumer when some consumers changed, consumerId to notify: {}",
-                    consumerId, e);
+                        consumerId, e);
             }
         }
     }
