@@ -619,6 +619,7 @@ public class DefaultMQProducerImpl implements MQProducerInner {
             final SendCallback sendCallback,
             final long timeout
     ) throws MQClientException, RemotingException, MQBrokerException, InterruptedException {
+        //确保服务是running状态的
         this.makeSureStateOK();
         Validators.checkMessage(msg, this.defaultMQProducer);
         final long invokeID = random.nextLong();
@@ -1374,7 +1375,7 @@ public class DefaultMQProducerImpl implements MQProducerInner {
         return transactionSendResult;
     }
 
-    /**
+    /**默认同步发送消息
      * DEFAULT SYNC -------------------------------------------------------
      */
     public SendResult send(

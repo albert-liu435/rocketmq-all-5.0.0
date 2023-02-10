@@ -99,7 +99,7 @@ public class DefaultMQProducer extends ClientConfig implements MQProducer {
      */
     private volatile int defaultTopicQueueNums = 4;
 
-    /**
+    /**发送消息 超时时间
      * Timeout for sending messages.
      */
     private int sendMsgTimeout = 3000;
@@ -334,7 +334,7 @@ public class DefaultMQProducer extends ClientConfig implements MQProducer {
         return this.defaultMQProducerImpl.fetchPublishMessageQueues(withNamespace(topic));
     }
 
-    /**
+    /**同步方法发送消息
      * Send message in synchronous mode. This method returns only when the sending procedure totally completes. </p>
      *
      * <strong>Warn:</strong> this method has internal retry-mechanism, that is, internal implementation will retry

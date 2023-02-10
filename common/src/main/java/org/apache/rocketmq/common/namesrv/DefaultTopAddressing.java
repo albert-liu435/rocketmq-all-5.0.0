@@ -127,7 +127,7 @@ public class DefaultTopAddressing implements TopAddressing {
                     url = url + "-" + this.unitName + "?nofix=1";
                 }
             }
-
+            //发送http请求
             HttpTinyClient.HttpResult result = HttpTinyClient.httpGet(url, null, null, "UTF-8", timeoutMills);
             if (200 == result.code) {
                 String responseStr = result.content;

@@ -27,7 +27,7 @@ import java.util.Map;
  */
 public class Message implements Serializable {
     private static final long serialVersionUID = 8445773977080406428L;
-
+    //消息主题
     private String topic;
     private int flag;
     private Map<String, String> properties;

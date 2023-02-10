@@ -280,6 +280,11 @@ public class MQClientAPIImpl implements NameServerUpdateCallback {
         return remotingClient;
     }
 
+    /**
+     * 获取namesrv地址
+     *
+     * @return
+     */
     public String fetchNameServerAddr() {
         try {
             String addrs = this.topAddressing.fetchNSAddr();
@@ -316,6 +321,9 @@ public class MQClientAPIImpl implements NameServerUpdateCallback {
         this.remotingClient.updateNameServerAddressList(list);
     }
 
+    /**
+     * 启动MQ客户端API
+     */
     public void start() {
         this.remotingClient.start();
     }

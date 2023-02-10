@@ -20,6 +20,7 @@ package org.apache.rocketmq.client;
 import static org.apache.rocketmq.common.topic.TopicValidator.isTopicOrGroupIllegal;
 
 import java.util.Properties;
+
 import org.apache.rocketmq.client.exception.MQClientException;
 import org.apache.rocketmq.client.producer.DefaultMQProducer;
 import org.apache.rocketmq.common.TopicConfig;
@@ -30,6 +31,7 @@ import org.apache.rocketmq.common.protocol.ResponseCode;
 import org.apache.rocketmq.common.topic.TopicValidator;
 
 /**
+ * 公共校验类
  * Common Validator
  */
 public class Validators {
@@ -56,6 +58,13 @@ public class Validators {
         }
     }
 
+    /**
+     * 校验消息
+     *
+     * @param msg
+     * @param defaultMQProducer
+     * @throws MQClientException
+     */
     public static void checkMessage(Message msg, DefaultMQProducer defaultMQProducer) throws MQClientException {
         if (null == msg) {
             throw new MQClientException(ResponseCode.MESSAGE_ILLEGAL, "the message is null");
@@ -75,7 +84,7 @@ public class Validators {
 
         if (msg.getBody().length > defaultMQProducer.getMaxMessageSize()) {
             throw new MQClientException(ResponseCode.MESSAGE_ILLEGAL,
-                "the message body size over max value, MAX: " + defaultMQProducer.getMaxMessageSize());
+                    "the message body size over max value, MAX: " + defaultMQProducer.getMaxMessageSize());
         }
     }
 
@@ -86,7 +95,7 @@ public class Validators {
 
         if (topic.length() > TOPIC_MAX_LENGTH) {
             throw new MQClientException(
-                String.format("The specified topic is longer than topic max length %d.", TOPIC_MAX_LENGTH), null);
+                    String.format("The specified topic is longer than topic max length %d.", TOPIC_MAX_LENGTH), null);
         }
 
         if (isTopicOrGroupIllegal(topic)) {
@@ -113,16 +122,16 @@ public class Validators {
     public static void checkTopicConfig(final TopicConfig topicConfig) throws MQClientException {
         if (!PermName.isValid(topicConfig.getPerm())) {
             throw new MQClientException(ResponseCode.NO_PERMISSION,
-                String.format("topicPermission value: %s is invalid.", topicConfig.getPerm()));
+                    String.format("topicPermission value: %s is invalid.", topicConfig.getPerm()));
         }
     }
 
     public static void checkBrokerConfig(final Properties brokerConfig) throws MQClientException {
         // TODO: use MixAll.isPropertyValid() when jdk upgrade to 1.8
         if (brokerConfig.containsKey("brokerPermission")
-            && !PermName.isValid(brokerConfig.getProperty("brokerPermission"))) {
+                && !PermName.isValid(brokerConfig.getProperty("brokerPermission"))) {
             throw new MQClientException(ResponseCode.NO_PERMISSION,
-                String.format("brokerPermission value: %s is invalid.", brokerConfig.getProperty("brokerPermission")));
+                    String.format("brokerPermission value: %s is invalid.", brokerConfig.getProperty("brokerPermission")));
         }
     }
 }
