@@ -19,12 +19,15 @@ package org.apache.rocketmq.common.compression;
 
 import java.io.IOException;
 
+/**
+ * 文件压缩操作类
+ */
 public interface Compressor {
 
     /**
      * Compress message by different compressor.
      *
-     * @param src bytes ready to compress
+     * @param src   bytes ready to compress
      * @param level compression level used to balance compression rate and time consumption
      * @return compressed byte data
      * @throws IOException

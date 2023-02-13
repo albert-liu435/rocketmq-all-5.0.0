@@ -25,6 +25,9 @@ import org.apache.rocketmq.remoting.annotation.CFNotNull;
 import org.apache.rocketmq.remoting.annotation.CFNullable;
 import org.apache.rocketmq.remoting.exception.RemotingCommandException;
 
+/**
+ * 自定义路由header
+ */
 public class GetRouteInfoRequestHeader implements CommandCustomHeader {
 
     @CFNotNull

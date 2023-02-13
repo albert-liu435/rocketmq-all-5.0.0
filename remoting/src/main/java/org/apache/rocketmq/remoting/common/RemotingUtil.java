@@ -19,6 +19,7 @@ package org.apache.rocketmq.remoting.common;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
+
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Method;
@@ -32,6 +33,7 @@ import java.nio.channels.SocketChannel;
 import java.nio.channels.spi.SelectorProvider;
 import java.util.ArrayList;
 import java.util.Enumeration;
+
 import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.logging.InternalLoggerFactory;
 import org.apache.rocketmq.remoting.netty.NettySystemConfig;
@@ -216,6 +218,11 @@ public class RemotingUtil {
         return null;
     }
 
+    /**
+     * 关闭channel
+     *
+     * @param channel
+     */
     public static void closeChannel(Channel channel) {
         final String addrRemote = RemotingHelper.parseChannelRemoteAddr(channel);
         if ("".equals(addrRemote)) {
@@ -225,7 +232,7 @@ public class RemotingUtil {
                 @Override
                 public void operationComplete(ChannelFuture future) throws Exception {
                     log.info("closeChannel: close the connection to remote address[{}] result: {}", addrRemote,
-                        future.isSuccess());
+                            future.isSuccess());
                 }
             });
         }

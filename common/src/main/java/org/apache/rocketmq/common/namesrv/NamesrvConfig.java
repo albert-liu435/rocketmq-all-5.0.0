@@ -55,7 +55,7 @@ public class NamesrvConfig {
      * Indicates the capacity of queue to hold broker or operation requests.
      */
     private int defaultThreadPoolQueueCapacity = 10000;
-    /**
+    /**扫描不再活动的broker的间隔
      * Interval of periodic scanning for non-active broker;
      */
     private long scanNotActiveBrokerInterval = 5 * 1000;

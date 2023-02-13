@@ -67,6 +67,7 @@ public class TlsSystemConfig {
     public static String tlsServerKeyPassword = System.getProperty(TLS_SERVER_KEYPASSWORD, null);
 
     /**
+     * ssl存储路径
      * The store path of server-side X.509 certificate chain in PEM format
      */
     public static String tlsServerCertPath = System.getProperty(TLS_SERVER_CERTPATH, null);

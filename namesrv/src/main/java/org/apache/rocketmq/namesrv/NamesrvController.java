@@ -173,6 +173,9 @@ public class NamesrvController {
         };
     }
 
+    /**
+     * 初始化ssl信息
+     */
     private void initiateSslContext() {
         if (TlsSystemConfig.tlsMode == TlsMode.DISABLED) {
             return;
@@ -232,6 +235,9 @@ public class NamesrvController {
         return slowTimeMills;
     }
 
+    /**
+     * 注册处理器
+     */
     private void registerProcessor() {
 
         if (namesrvConfig.isClusterTest()) {
@@ -246,6 +252,9 @@ public class NamesrvController {
         }
     }
 
+    /**
+     * 初始化RPC钩子
+     */
     private void initiateRpcHooks() {
         this.remotingServer.registerRPCHook(new ZoneRouteRPCHook());
     }
@@ -269,6 +278,9 @@ public class NamesrvController {
         this.routeInfoManager.start();
     }
 
+    /**
+     * shutdown
+     */
     public void shutdown() {
         this.remotingClient.shutdown();
         this.remotingServer.shutdown();

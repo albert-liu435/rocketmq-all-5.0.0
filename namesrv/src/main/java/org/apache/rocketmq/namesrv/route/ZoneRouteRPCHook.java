@@ -33,6 +33,9 @@ import org.apache.rocketmq.remoting.RPCHook;
 import org.apache.rocketmq.remoting.protocol.RemotingCommand;
 import org.apache.rocketmq.remoting.protocol.RemotingSerializable;
 
+/**
+ *
+ */
 public class ZoneRouteRPCHook implements RPCHook {
 
     @Override

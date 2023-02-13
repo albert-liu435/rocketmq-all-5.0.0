@@ -774,12 +774,17 @@ public class RouteInfoManager {
         return null;
     }
 
+    /**
+     * 扫描不再活动的broker信息
+     */
     public void scanNotActiveBroker() {
         try {
             log.info("start scanNotActiveBroker");
+            //遍历broker信息
             for (Entry<BrokerAddrInfo, BrokerLiveInfo> next : this.brokerLiveTable.entrySet()) {
                 long last = next.getValue().getLastUpdateTimestamp();
                 long timeoutMillis = next.getValue().getHeartbeatTimeoutMillis();
+                //如果broker信息最后更新时间超时就直接关闭channel
                 if ((last + timeoutMillis) < System.currentTimeMillis()) {
                     RemotingUtil.closeChannel(next.getValue().getChannel());
                     log.warn("The broker channel expired, {} {}ms", next.getKey(), timeoutMillis);

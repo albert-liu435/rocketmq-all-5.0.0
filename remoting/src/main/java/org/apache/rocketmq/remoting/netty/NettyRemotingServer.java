@@ -118,6 +118,11 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
         loadSslContext();
     }
 
+    /**
+     * 构建EventLoopGroup
+     *
+     * @return
+     */
     private EventLoopGroup buildEventLoopGroupSelector() {
         if (useEpoll()) {
             return new EpollEventLoopGroup(nettyServerConfig.getServerSelectorThreads(), new ThreadFactory() {
@@ -142,6 +147,11 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
         }
     }
 
+    /**
+     * 构建EventLoopGroup
+     *
+     * @return
+     */
     private EventLoopGroup buildBossEventLoopGroup() {
         if (useEpoll()) {
             return new EpollEventLoopGroup(1, new ThreadFactory() {
@@ -164,6 +174,12 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
         }
     }
 
+    /**
+     * 构建执行器
+     *
+     * @param nettyServerConfig
+     * @return
+     */
     private ExecutorService buildPublicExecutor(NettyServerConfig nettyServerConfig) {
         int publicThreadNums = nettyServerConfig.getServerCallbackExecutorThreads();
         if (publicThreadNums <= 0) {
@@ -216,7 +232,7 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
                         return new Thread(r, "NettyServerCodecThread_" + this.threadIndex.incrementAndGet());
                     }
                 });
-
+        //准备握手处理器
         prepareSharableHandlers();
 
         serverBootstrap.group(this.eventLoopGroupBoss, this.eventLoopGroupSelector)
@@ -324,6 +340,13 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
         }
     }
 
+    /**
+     * 注册netty请求处理器
+     *
+     * @param requestCode
+     * @param processor
+     * @param executor
+     */
     @Override
     public void registerProcessor(int requestCode, NettyRequestProcessor processor, ExecutorService executor) {
         ExecutorService executorThis = executor;
@@ -407,6 +430,9 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
         serverHandler = new NettyServerHandler();
     }
 
+    /**
+     * 握手处理器
+     */
     @ChannelHandler.Sharable
     class HandshakeHandler extends SimpleChannelInboundHandler<ByteBuf> {
 
@@ -422,7 +448,7 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
         protected void channelRead0(ChannelHandlerContext ctx, ByteBuf msg) {
 
             // mark the current position so that we can peek the first byte to determine if the content is starting with
-            // TLS handshake
+            // TLS handshake 标记可读的位置
             msg.markReaderIndex();
 
             byte b = msg.getByte(0);
@@ -470,6 +496,9 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
         }
     }
 
+    /**
+     * netty 服务处理器
+     */
     @ChannelHandler.Sharable
     class NettyServerHandler extends SimpleChannelInboundHandler<RemotingCommand> {
 
@@ -486,6 +515,9 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
         }
     }
 
+    /**
+     * 连接管理器
+     */
     @ChannelHandler.Sharable
     class NettyConnectManageHandler extends ChannelDuplexHandler {
         @Override

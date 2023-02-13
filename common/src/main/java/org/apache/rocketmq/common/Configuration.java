@@ -29,6 +29,9 @@ import java.util.Properties;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+/**
+ * 配置信息类
+ */
 public class Configuration {
 
     private final InternalLogger log;
@@ -93,6 +96,7 @@ public class Configuration {
     }
 
     /**
+     * 注册配置properties
      * register config properties
      *
      * @return the current Configuration object
@@ -134,7 +138,7 @@ public class Configuration {
                 // check
                 this.storePathField = object.getClass().getDeclaredField(fieldName);
                 assert this.storePathField != null
-                    && !Modifier.isStatic(this.storePathField.getModifiers());
+                        && !Modifier.isStatic(this.storePathField.getModifiers());
                 this.storePathField.setAccessible(true);
             } catch (NoSuchFieldException e) {
                 throw new RuntimeException(e);

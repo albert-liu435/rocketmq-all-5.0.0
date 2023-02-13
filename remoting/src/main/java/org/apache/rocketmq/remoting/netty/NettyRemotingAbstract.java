@@ -52,30 +52,38 @@ import org.apache.rocketmq.remoting.exception.RemotingTooMuchRequestException;
 import org.apache.rocketmq.remoting.protocol.RemotingCommand;
 import org.apache.rocketmq.remoting.protocol.RemotingSysResponseCode;
 
+/**
+ * netty远程调用抽象类
+ */
 public abstract class NettyRemotingAbstract {
 
     /**
+     * 远程日志实例
      * Remoting logger instance.
      */
     private static final InternalLogger log = InternalLoggerFactory.getLogger(RemotingHelper.ROCKETMQ_REMOTING);
 
     /**
+     * 信号量可限制正在进行的单向请求的最大数量，从而保护系统内存占用。
      * Semaphore to limit maximum number of on-going one-way requests, which protects system memory footprint.
      */
     protected final Semaphore semaphoreOneway;
 
     /**
+     * 信号量可限制正在进行的异步请求的最大数量，从而保护系统内存占用。
      * Semaphore to limit maximum number of on-going asynchronous requests, which protects system memory footprint.
      */
     protected final Semaphore semaphoreAsync;
 
     /**
+     * 此映射缓存所有正在进行的请求。
      * This map caches all on-going requests.
      */
     protected final ConcurrentMap<Integer /* opaque */, ResponseFuture> responseTable =
             new ConcurrentHashMap<>(256);
 
     /**
+     * 这个容器包含每个请求代码的所有处理器，也就是说，对于每个传入请求，我们可以在这个映射中查找响应处理器来处理请求。
      * This container holds all processors per request code, aka, for each incoming request, we may look up the
      * responding processor in this map to handle the request.
      */
@@ -353,6 +361,7 @@ public abstract class NettyRemotingAbstract {
     }
 
     /**
+     * 自定义RPC 钩子
      * Custom RPC hooks.
      *
      * @return RPC hooks if specified; null otherwise.

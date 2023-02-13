@@ -18,6 +18,7 @@
 package org.apache.rocketmq.srvutil;
 
 import com.google.common.base.Strings;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -26,12 +27,16 @@ import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.util.HashMap;
 import java.util.Map;
+
 import org.apache.rocketmq.common.LifecycleAwareServiceThread;
 import org.apache.rocketmq.common.UtilAll;
 import org.apache.rocketmq.common.constant.LoggerName;
 import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.logging.InternalLoggerFactory;
 
+/**
+ * 文件监听服务
+ */
 public class FileWatchService extends LifecycleAwareServiceThread {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.COMMON_LOGGER_NAME);
 
@@ -41,7 +46,7 @@ public class FileWatchService extends LifecycleAwareServiceThread {
     private final MessageDigest md = MessageDigest.getInstance("MD5");
 
     public FileWatchService(final String[] watchFiles,
-        final Listener listener) throws Exception {
+                            final Listener listener) throws Exception {
         this.listener = listener;
         for (String file : watchFiles) {
             if (!Strings.isNullOrEmpty(file) && new File(file).exists()) {

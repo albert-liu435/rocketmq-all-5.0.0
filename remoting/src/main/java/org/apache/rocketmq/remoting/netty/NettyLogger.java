@@ -24,10 +24,13 @@ import org.apache.rocketmq.logging.InternalLoggerFactory;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
+/**
+ * Netty日志类
+ */
 public class NettyLogger {
 
     private static AtomicBoolean nettyLoggerSeted = new AtomicBoolean(false);
-    
+
     private static InternalLogLevel nettyLogLevel = InternalLogLevel.ERROR;
 
     public static void initNettyLogger() {
@@ -41,6 +44,9 @@ public class NettyLogger {
         }
     }
 
+    /**
+     * netty日志桥接工厂类
+     */
     private static class NettyBridgeLoggerFactory extends io.netty.util.internal.logging.InternalLoggerFactory {
         @Override
         protected io.netty.util.internal.logging.InternalLogger newInstance(String s) {
@@ -48,6 +54,9 @@ public class NettyLogger {
         }
     }
 
+    /**
+     * netty桥接日志类
+     */
     private static class NettyBridgeLogger implements io.netty.util.internal.logging.InternalLogger {
 
         private InternalLogger logger = null;

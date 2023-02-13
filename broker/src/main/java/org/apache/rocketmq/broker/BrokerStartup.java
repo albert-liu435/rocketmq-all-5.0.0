@@ -60,6 +60,9 @@ public class BrokerStartup {
     public static final SystemConfigFileHelper CONFIG_FILE_HELPER = new SystemConfigFileHelper();
 
     public static void main(String[] args) {
+        //本地环境问题，不然没有办法创建topic
+        System.setProperty(MixAll.NAMESRV_ADDR_PROPERTY, "127.0.0.1:9876");
+
         //创建createBrokerController然后启动
         start(createBrokerController(args));
     }
