@@ -143,7 +143,7 @@ public abstract class NettyRemotingAbstract {
     }
 
     /**
-     * 处理接受到的消息
+     * 处理接受到的消息，并处理远程的命令
      * Entry of incoming command processing.
      *
      * <p>
@@ -190,12 +190,14 @@ public abstract class NettyRemotingAbstract {
     }
 
     /**
+     * 处理请求命令
      * Process incoming request command issued by remote peer.
      *
      * @param ctx channel handler context.
      * @param cmd request command.
      */
     public void processRequestCommand(final ChannelHandlerContext ctx, final RemotingCommand cmd) {
+        //根据请求code获请求处理器
         final Pair<NettyRequestProcessor, ExecutorService> matched = this.processorTable.get(cmd.getCode());
         final Pair<NettyRequestProcessor, ExecutorService> pair = null == matched ? this.defaultRequestProcessorPair : matched;
         final int opaque = cmd.getOpaque();

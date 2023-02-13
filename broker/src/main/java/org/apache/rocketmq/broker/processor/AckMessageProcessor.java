@@ -42,6 +42,9 @@ import org.apache.rocketmq.store.PutMessageResult;
 import org.apache.rocketmq.store.PutMessageStatus;
 import org.apache.rocketmq.store.pop.AckMsg;
 
+/**
+ * 应答消息处理器
+ */
 public class AckMessageProcessor implements NettyRequestProcessor {
     private static final InternalLogger POP_LOGGER = InternalLoggerFactory.getLogger(LoggerName.ROCKETMQ_POP_LOGGER_NAME);
     private final BrokerController brokerController;
@@ -88,7 +91,7 @@ public class AckMessageProcessor implements NettyRequestProcessor {
 
     @Override
     public RemotingCommand processRequest(final ChannelHandlerContext ctx,
-        RemotingCommand request) throws RemotingCommandException {
+                                          RemotingCommand request) throws RemotingCommandException {
         return this.processRequest(ctx.channel(), request, true);
     }
 
@@ -98,7 +101,7 @@ public class AckMessageProcessor implements NettyRequestProcessor {
     }
 
     private RemotingCommand processRequest(final Channel channel, RemotingCommand request,
-        boolean brokerAllowSuspend) throws RemotingCommandException {
+                                           boolean brokerAllowSuspend) throws RemotingCommandException {
         final AckMessageRequestHeader requestHeader = (AckMessageRequestHeader) request.decodeCommandCustomHeader(AckMessageRequestHeader.class);
         MessageExtBrokerInner msgInner = new MessageExtBrokerInner();
         AckMsg ackMsg = new AckMsg();
@@ -114,7 +117,7 @@ public class AckMessageProcessor implements NettyRequestProcessor {
 
         if (requestHeader.getQueueId() >= topicConfig.getReadQueueNums() || requestHeader.getQueueId() < 0) {
             String errorInfo = String.format("queueId[%d] is illegal, topic:[%s] topicConfig.readQueueNums:[%d] consumer:[%s]",
-                requestHeader.getQueueId(), requestHeader.getTopic(), topicConfig.getReadQueueNums(), channel.remoteAddress());
+                    requestHeader.getQueueId(), requestHeader.getTopic(), topicConfig.getReadQueueNums(), channel.remoteAddress());
             POP_LOGGER.warn(errorInfo);
             response.setCode(ResponseCode.MESSAGE_ILLEGAL);
             response.setRemark(errorInfo);
@@ -124,7 +127,7 @@ public class AckMessageProcessor implements NettyRequestProcessor {
         long maxOffset = this.brokerController.getMessageStore().getMaxOffsetInQueue(requestHeader.getTopic(), requestHeader.getQueueId());
         if (requestHeader.getOffset() < minOffset || requestHeader.getOffset() > maxOffset) {
             String errorInfo = String.format("offset is illegal, key:%s@%d, commit:%d, store:%d~%d",
-                requestHeader.getTopic(), requestHeader.getQueueId(), requestHeader.getOffset(), minOffset, maxOffset);
+                    requestHeader.getTopic(), requestHeader.getQueueId(), requestHeader.getOffset(), minOffset, maxOffset);
             POP_LOGGER.warn(errorInfo);
             response.setCode(ResponseCode.NO_MESSAGE);
             response.setRemark(errorInfo);
@@ -148,9 +151,9 @@ public class AckMessageProcessor implements NettyRequestProcessor {
         if (rqId == KeyBuilder.POP_ORDER_REVIVE_QUEUE) {
             // order
             String lockKey = requestHeader.getTopic() + PopAckConstants.SPLIT
-                + requestHeader.getConsumerGroup() + PopAckConstants.SPLIT + requestHeader.getQueueId();
+                    + requestHeader.getConsumerGroup() + PopAckConstants.SPLIT + requestHeader.getQueueId();
             long oldOffset = this.brokerController.getConsumerOffsetManager().queryOffset(requestHeader.getConsumerGroup(),
-                requestHeader.getTopic(), requestHeader.getQueueId());
+                    requestHeader.getTopic(), requestHeader.getQueueId());
             if (requestHeader.getOffset() < oldOffset) {
                 return response;
             }
@@ -163,18 +166,18 @@ public class AckMessageProcessor implements NettyRequestProcessor {
                     return response;
                 }
                 long nextOffset = brokerController.getConsumerOrderInfoManager().commitAndNext(
-                    requestHeader.getTopic(), requestHeader.getConsumerGroup(),
-                    requestHeader.getQueueId(), requestHeader.getOffset());
+                        requestHeader.getTopic(), requestHeader.getConsumerGroup(),
+                        requestHeader.getQueueId(), requestHeader.getOffset());
                 if (nextOffset > -1) {
                     this.brokerController.getConsumerOffsetManager().commitOffset(channel.remoteAddress().toString(),
-                        requestHeader.getConsumerGroup(), requestHeader.getTopic(),
-                        requestHeader.getQueueId(),
-                        nextOffset);
+                            requestHeader.getConsumerGroup(), requestHeader.getTopic(),
+                            requestHeader.getQueueId(),
+                            nextOffset);
                     this.brokerController.getPopMessageProcessor().notifyMessageArriving(requestHeader.getTopic(), requestHeader.getConsumerGroup(),
-                        requestHeader.getQueueId());
+                            requestHeader.getQueueId());
                 } else if (nextOffset == -1) {
                     String errorInfo = String.format("offset is illegal, key:%s, old:%d, commit:%d, next:%d, %s",
-                        lockKey, oldOffset, requestHeader.getOffset(), nextOffset, channel.remoteAddress());
+                            lockKey, oldOffset, requestHeader.getOffset(), nextOffset, channel.remoteAddress());
                     POP_LOGGER.warn(errorInfo);
                     response.setCode(ResponseCode.MESSAGE_ILLEGAL);
                     response.setRemark(errorInfo);
@@ -203,9 +206,9 @@ public class AckMessageProcessor implements NettyRequestProcessor {
         msgInner.setPropertiesString(MessageDecoder.messageProperties2String(msgInner.getProperties()));
         PutMessageResult putMessageResult = this.brokerController.getEscapeBridge().putMessageToSpecificQueue(msgInner);
         if (putMessageResult.getPutMessageStatus() != PutMessageStatus.PUT_OK
-            && putMessageResult.getPutMessageStatus() != PutMessageStatus.FLUSH_DISK_TIMEOUT
-            && putMessageResult.getPutMessageStatus() != PutMessageStatus.FLUSH_SLAVE_TIMEOUT
-            && putMessageResult.getPutMessageStatus() != PutMessageStatus.SLAVE_NOT_AVAILABLE) {
+                && putMessageResult.getPutMessageStatus() != PutMessageStatus.FLUSH_DISK_TIMEOUT
+                && putMessageResult.getPutMessageStatus() != PutMessageStatus.FLUSH_SLAVE_TIMEOUT
+                && putMessageResult.getPutMessageStatus() != PutMessageStatus.SLAVE_NOT_AVAILABLE) {
             POP_LOGGER.error("put ack msg error:" + putMessageResult);
         }
         return response;
