@@ -782,6 +782,8 @@ public class RouteInfoManager {
             log.info("start scanNotActiveBroker");
             //遍历broker信息
             for (Entry<BrokerAddrInfo, BrokerLiveInfo> next : this.brokerLiveTable.entrySet()) {
+
+                //
                 long last = next.getValue().getLastUpdateTimestamp();
                 long timeoutMillis = next.getValue().getHeartbeatTimeoutMillis();
                 //如果broker信息最后更新时间超时就直接关闭channel
@@ -1096,7 +1098,9 @@ public class RouteInfoManager {
 }
 
 class BrokerLiveInfo {
+    //最后更新时间
     private long lastUpdateTimestamp;
+    //心跳超时时间
     private long heartbeatTimeoutMillis;
     private DataVersion dataVersion;
     private Channel channel;
