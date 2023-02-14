@@ -101,6 +101,7 @@ public class DefaultRequestProcessor implements NettyRequestProcessor {
             case RequestCode.QUERY_DATA_VERSION:
                 return this.queryBrokerTopicConfig(ctx, request);
             case RequestCode.REGISTER_BROKER:
+                //注册Broker请求
                 return this.registerBroker(ctx, request);
             case RequestCode.UNREGISTER_BROKER:
                 return this.unregisterBroker(ctx, request);
@@ -211,6 +212,13 @@ public class DefaultRequestProcessor implements NettyRequestProcessor {
         return response;
     }
 
+    /**
+     * 处理注册Broker请求
+     * @param ctx
+     * @param request
+     * @return
+     * @throws RemotingCommandException
+     */
     public RemotingCommand registerBroker(ChannelHandlerContext ctx,
                                           RemotingCommand request) throws RemotingCommandException {
         final RemotingCommand response = RemotingCommand.createResponseCommand(RegisterBrokerResponseHeader.class);
@@ -236,7 +244,7 @@ public class DefaultRequestProcessor implements NettyRequestProcessor {
             // RegisterBrokerBody of old version only contains TopicConfig.
             topicConfigWrapper = extractRegisterTopicConfigFromRequest(request);
         }
-
+        //维护broker信息
         RegisterBrokerResult result = this.namesrvController.getRouteInfoManager().registerBroker(
                 requestHeader.getClusterName(),
                 requestHeader.getBrokerAddr(),

@@ -129,9 +129,9 @@ public class NamesrvController {
     private void loadConfig() {
         this.kvConfigManager.load();
     }
-
+    //启动定时任务
     private void startScheduleService() {
-        //任务1、每隔 10s 扫描 broker ,维护当前存活的Broker信息。
+        //任务1、每隔 5s 扫描 broker ,移除处于未激活状态的broker,维护当前存活的Broker信息。
         this.scanExecutorService.scheduleAtFixedRate(NamesrvController.this.routeInfoManager::scanNotActiveBroker,
                 5, this.namesrvConfig.getScanNotActiveBrokerInterval(), TimeUnit.MILLISECONDS);
 

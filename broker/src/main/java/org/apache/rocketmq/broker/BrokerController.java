@@ -1550,7 +1550,7 @@ public class BrokerController {
             changeSpecialServiceStatus(this.brokerConfig.getBrokerId() == MixAll.MASTER_ID);
             this.registerBrokerAll(true, false, true);
         }
-
+        //broker向nameserver发送心跳包
         scheduledFutures.add(this.scheduledExecutorService.scheduleAtFixedRate(new AbstractBrokerRunnable(this.getBrokerIdentity()) {
             @Override
             public void run2() {
@@ -1655,6 +1655,13 @@ public class BrokerController {
         doRegisterBrokerAll(true, false, topicConfigSerializeWrapper);
     }
 
+    /**
+     * 发送心跳包到NameServer
+     *
+     * @param checkOrderConfig
+     * @param oneway
+     * @param forceRegister
+     */
     public synchronized void registerBrokerAll(final boolean checkOrderConfig, boolean oneway, boolean forceRegister) {
 
         TopicConfigAndMappingSerializeWrapper topicConfigWrapper = new TopicConfigAndMappingSerializeWrapper();
@@ -1688,6 +1695,13 @@ public class BrokerController {
         }
     }
 
+    /**
+     * 注册即发送心跳包
+     *
+     * @param checkOrderConfig
+     * @param oneway
+     * @param topicConfigWrapper
+     */
     protected void doRegisterBrokerAll(boolean checkOrderConfig, boolean oneway,
                                        TopicConfigSerializeWrapper topicConfigWrapper) {
 

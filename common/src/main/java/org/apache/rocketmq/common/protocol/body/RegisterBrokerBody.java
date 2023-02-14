@@ -18,6 +18,7 @@
 package org.apache.rocketmq.common.protocol.body;
 
 import com.alibaba.fastjson.JSON;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -30,6 +31,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.zip.Deflater;
 import java.util.zip.DeflaterOutputStream;
 import java.util.zip.InflaterInputStream;
+
 import org.apache.rocketmq.common.DataVersion;
 import org.apache.rocketmq.common.MixAll;
 import org.apache.rocketmq.common.TopicConfig;
@@ -39,10 +41,14 @@ import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.logging.InternalLoggerFactory;
 import org.apache.rocketmq.remoting.protocol.RemotingSerializable;
 
+/**
+ * 注册请求body信息
+ */
 public class RegisterBrokerBody extends RemotingSerializable {
 
     private static final InternalLogger LOGGER = InternalLoggerFactory.getLogger(LoggerName.COMMON_LOGGER_NAME);
     private TopicConfigAndMappingSerializeWrapper topicConfigSerializeWrapper = new TopicConfigAndMappingSerializeWrapper();
+    //消息过滤服务器列表
     private List<String> filterServerList = new ArrayList<String>();
 
     public byte[] encode(boolean compress) {
@@ -90,7 +96,7 @@ public class RegisterBrokerBody extends RemotingSerializable {
                 topicQueueMappingInfoMap = new ConcurrentHashMap<String, TopicQueueMappingInfo>();
             }
             outputStream.write(convertIntToByteArray(topicQueueMappingInfoMap.size()));
-            for (TopicQueueMappingInfo info: topicQueueMappingInfoMap.values()) {
+            for (TopicQueueMappingInfo info : topicQueueMappingInfoMap.values()) {
                 buffer = JSON.toJSONString(info).getBytes(MixAll.DEFAULT_CHARSET);
                 outputStream.write(convertIntToByteArray(buffer.length));
                 // write filter server list json
@@ -150,7 +156,7 @@ public class RegisterBrokerBody extends RemotingSerializable {
 
         registerBrokerBody.setFilterServerList(filterServerList);
 
-        int topicQueueMappingNum =  readInt(inflaterInputStream);
+        int topicQueueMappingNum = readInt(inflaterInputStream);
         Map<String/* topic */, TopicQueueMappingInfo> topicQueueMappingInfoMap = new ConcurrentHashMap<String, TopicQueueMappingInfo>();
         for (int i = 0; i < topicQueueMappingNum; i++) {
             int mappingJsonLen = readInt(inflaterInputStream);
@@ -210,7 +216,7 @@ public class RegisterBrokerBody extends RemotingSerializable {
     }
 
     public static ConcurrentMap<String, TopicConfig> cloneTopicConfigTable(
-        ConcurrentMap<String, TopicConfig> topicConfigConcurrentMap) {
+            ConcurrentMap<String, TopicConfig> topicConfigConcurrentMap) {
         ConcurrentHashMap<String, TopicConfig> result = new ConcurrentHashMap<String, TopicConfig>();
         if (topicConfigConcurrentMap != null) {
             for (Map.Entry<String, TopicConfig> entry : topicConfigConcurrentMap.entrySet()) {

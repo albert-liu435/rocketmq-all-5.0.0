@@ -78,13 +78,16 @@ public class RouteInfoManager {
     //读写锁，用来保护非线程安全容器 HashMap
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
     //topicQueueTable，主题与队列关系，记录一个主题的队列分布在哪些Broker上，每个Broker上存在该主题的队列个数
+    //topic消息队列的路由信息，消息发送时根据路由表进行负载均衡
     private final Map<String/* topic */, Map<String, QueueData>> topicQueueTable;
     //brokerAddrTable,所有 Broker 信息，使用 brokerName 当key, BrokerData 信息描述每一个 broker 信息。
+    //Broker基础信息，包含brokerName、所属集群名称、主备Broker地址
     private final Map<String/* brokerName */, BrokerData> brokerAddrTable;
     //clusterAddrTable，broker 集群信息，每个集群包含哪些 Broker。
     private final Map<String/* clusterName */, Set<String/* brokerName */>> clusterAddrTable;
     //brokerLiveTable，当前存活的 Broker,该信息不是实时的，NameServer 每10S扫描一次所有的 broker,根据心跳包的时间得知 broker的状态，该机制也是导致当一个 Broker 进程假死后，消息生产者无法立即感知，可能继续向其发送消息，导致失败（非高可用），如何保证消息发送高可用
     private final Map<BrokerAddrInfo/* brokerAddr */, BrokerLiveInfo> brokerLiveTable;
+    //Broker上的FilterServer列表，用于类模式消息过滤，类模式消息过滤。
     private final Map<BrokerAddrInfo/* brokerAddr */, List<String>/* Filter Server */> filterServerTable;
     private final Map<String/* topic */, Map<String/*brokerName*/, TopicQueueMappingInfo>> topicQueueMappingInfoTable;
 
@@ -240,14 +243,16 @@ public class RouteInfoManager {
             final Channel channel) {
         RegisterBrokerResult result = new RegisterBrokerResult();
         try {
+            //添加写锁，防止出现并发修改RouteInfoManager中的路由表。
             this.lock.writeLock().lockInterruptibly();
 
+            //判断Broker所属集群是否存在，如果不存在，则创建集群，然后将broker名加入broker集群。
             //init or update the cluster info
             Set<String> brokerNames = ConcurrentHashMapUtils.computeIfAbsent((ConcurrentHashMap<String, Set<String>>) this.clusterAddrTable, clusterName, k -> new HashSet<>());
             brokerNames.add(brokerName);
 
             boolean registerFirst = false;
-
+            //
             BrokerData brokerData = this.brokerAddrTable.get(brokerName);
             if (null == brokerData) {
                 registerFirst = true;
@@ -783,7 +788,7 @@ public class RouteInfoManager {
             //遍历broker信息
             for (Entry<BrokerAddrInfo, BrokerLiveInfo> next : this.brokerLiveTable.entrySet()) {
 
-                //
+                //最后一次更新时间
                 long last = next.getValue().getLastUpdateTimestamp();
                 long timeoutMillis = next.getValue().getHeartbeatTimeoutMillis();
                 //如果broker信息最后更新时间超时就直接关闭channel
@@ -1100,9 +1105,11 @@ public class RouteInfoManager {
 class BrokerLiveInfo {
     //最后更新时间
     private long lastUpdateTimestamp;
-    //心跳超时时间
+    //心跳超时时间，默认为2min
     private long heartbeatTimeoutMillis;
+    //数据版本号
     private DataVersion dataVersion;
+    //通道，即channel
     private Channel channel;
     private String haServerAddr;
 

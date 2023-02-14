@@ -442,11 +442,12 @@ public class BrokerOuterAPI {
             final boolean compressed,
             final Long heartbeatTimeoutMillis,
             final BrokerIdentity brokerIdentity) {
-
+        //
         final List<RegisterBrokerResult> registerBrokerResultList = new CopyOnWriteArrayList<>();
+        //遍历所有的NameServer列表
         List<String> nameServerAddressList = this.remotingClient.getAvailableNameSrvList();
         if (nameServerAddressList != null && nameServerAddressList.size() > 0) {
-
+            //封装请求包头
             final RegisterBrokerRequestHeader requestHeader = new RegisterBrokerRequestHeader();
             requestHeader.setBrokerAddr(brokerAddr);
             requestHeader.setBrokerId(brokerId);
@@ -471,6 +472,7 @@ public class BrokerOuterAPI {
                     @Override
                     public void run2() {
                         try {
+                            //向nameserver进行注册
                             RegisterBrokerResult result = registerBroker(namesrvAddr, oneway, timeoutMills, requestHeader, body);
                             if (result != null) {
                                 registerBrokerResultList.add(result);

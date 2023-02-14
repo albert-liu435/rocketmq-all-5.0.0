@@ -22,6 +22,9 @@ import com.alibaba.fastjson.serializer.SerializerFeature;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 
+/**
+ * 远程序列化抽象类
+ */
 public abstract class RemotingSerializable {
     private final static Charset CHARSET_UTF8 = StandardCharsets.UTF_8;
 
@@ -63,7 +66,7 @@ public abstract class RemotingSerializable {
      * @param features Features to apply
      * @return serialized data.
      */
-    public byte[] encode(SerializerFeature...features) {
+    public byte[] encode(SerializerFeature... features) {
         final String json = JSON.toJSONString(this, features);
         return json.getBytes(CHARSET_UTF8);
     }

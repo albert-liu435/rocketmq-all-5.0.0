@@ -20,7 +20,7 @@ package org.apache.rocketmq.remoting.protocol;
 public class RemotingSysResponseCode {
 
     public static final int SUCCESS = 0;
-
+    //系统错误
     public static final int SYSTEM_ERROR = 1;
 
     public static final int SYSTEM_BUSY = 2;

@@ -20,7 +20,7 @@ package org.apache.rocketmq.remoting.netty;
  * netty客服端配置信息
  */
 public class NettyClientConfig {
-    /**
+    /**工作线程数
      * Worker thread number
      */
     private int clientWorkerThreads = NettySystemConfig.clientWorkerSize;

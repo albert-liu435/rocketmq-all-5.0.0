@@ -18,10 +18,14 @@ package org.apache.rocketmq.common;
 
 import java.io.IOException;
 import java.util.Map;
+
 import org.apache.rocketmq.common.constant.LoggerName;
 import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.logging.InternalLoggerFactory;
 
+/**
+ * config管理器
+ */
 public abstract class ConfigManager {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.COMMON_LOGGER_NAME);
 

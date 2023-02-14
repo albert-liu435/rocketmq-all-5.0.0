@@ -19,9 +19,11 @@ package org.apache.rocketmq.common;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.TypeReference;
 import com.alibaba.fastjson.annotation.JSONField;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+
 import org.apache.rocketmq.common.attribute.TopicMessageType;
 import org.apache.rocketmq.common.constant.PermName;
 
@@ -29,6 +31,7 @@ import static org.apache.rocketmq.common.TopicAttributes.TOPIC_MESSAGE_TYPE_ATTR
 
 public class TopicConfig {
     private static final String SEPARATOR = " ";
+    //读写队列数
     public static int defaultReadQueueNums = 16;
     public static int defaultWriteQueueNums = 16;
     private static final TypeReference<Map<String, String>> ATTRIBUTES_TYPE_REFERENCE = new TypeReference<Map<String, String>>() {
@@ -266,8 +269,8 @@ public class TopicConfig {
     @Override
     public String toString() {
         return "TopicConfig [topicName=" + topicName + ", readQueueNums=" + readQueueNums
-            + ", writeQueueNums=" + writeQueueNums + ", perm=" + PermName.perm2String(perm)
-            + ", topicFilterType=" + topicFilterType + ", topicSysFlag=" + topicSysFlag + ", order=" + order
-            + ", attributes=" + attributes + "]";
+                + ", writeQueueNums=" + writeQueueNums + ", perm=" + PermName.perm2String(perm)
+                + ", topicFilterType=" + topicFilterType + ", topicSysFlag=" + topicSysFlag + ", order=" + order
+                + ", attributes=" + attributes + "]";
     }
 }

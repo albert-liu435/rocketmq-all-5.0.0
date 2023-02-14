@@ -29,9 +29,11 @@ import org.apache.rocketmq.common.MixAll;
  * NamesrvConfig,主要指定 nameserver 的相关配置属性：
  */
 public class NamesrvConfig {
-
+    //RocketMQHome主目录
     private String rocketmqHome = System.getProperty(MixAll.ROCKETMQ_HOME_PROPERTY, System.getenv(MixAll.ROCKETMQ_HOME_ENV));
+    //NameServer存储KV配置属性的持久化路径
     private String kvConfigPath = System.getProperty("user.home") + File.separator + "namesrv" + File.separator + "kvConfig.json";
+    //默认配置文件的路径
     private String configStorePath = System.getProperty("user.home") + File.separator + "namesrv" + File.separator + "namesrv.properties";
     private String productEnvName = "center";
     private boolean clusterTest = false;
