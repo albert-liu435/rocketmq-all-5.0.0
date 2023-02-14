@@ -268,6 +268,13 @@ public class RemotingCommand {
         this.customHeader = customHeader;
     }
 
+    /**
+     * 解析自定义Header
+     *
+     * @param classHeader
+     * @return
+     * @throws RemotingCommandException
+     */
     public CommandCustomHeader decodeCommandCustomHeader(
             Class<? extends CommandCustomHeader> classHeader) throws RemotingCommandException {
         return decodeCommandCustomHeader(classHeader, true);
@@ -275,6 +282,7 @@ public class RemotingCommand {
 
     public CommandCustomHeader decodeCommandCustomHeader(Class<? extends CommandCustomHeader> classHeader,
                                                          boolean useFastEncode) throws RemotingCommandException {
+        //构建CommandCustomHeader实例
         CommandCustomHeader objectHeader;
         try {
             objectHeader = classHeader.getDeclaredConstructor().newInstance();

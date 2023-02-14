@@ -40,6 +40,14 @@ public class ClientRequestProcessor implements NettyRequestProcessor {
         this.namesrvController = namesrvController;
     }
 
+    /**
+     * 处理请求
+     *
+     * @param ctx
+     * @param request
+     * @return
+     * @throws Exception
+     */
     @Override
     public RemotingCommand processRequest(final ChannelHandlerContext ctx,
                                           final RemotingCommand request) throws Exception {
@@ -70,6 +78,7 @@ public class ClientRequestProcessor implements NettyRequestProcessor {
                 topicRouteData.setOrderTopicConf(orderTopicConf);
             }
 
+            //设置响应参数和内容
             byte[] content;
             Boolean standardJsonOnly = requestHeader.getAcceptStandardJsonOnly();
             if (request.getVersion() >= MQVersion.Version.V4_9_4.ordinal() || null != standardJsonOnly && standardJsonOnly) {

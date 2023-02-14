@@ -252,7 +252,7 @@ public class RouteInfoManager {
             brokerNames.add(brokerName);
 
             boolean registerFirst = false;
-            //
+            //维护BrokerData信息，首先从brokerAddrTable中根据brokerName尝试获取Broker信息，如果不存在，则新建brokerData，并放入brokerAddrTable
             BrokerData brokerData = this.brokerAddrTable.get(brokerName);
             if (null == brokerData) {
                 registerFirst = true;
@@ -263,7 +263,7 @@ public class RouteInfoManager {
             boolean isOldVersionBroker = enableActingMaster == null;
             brokerData.setEnableActingMaster(!isOldVersionBroker && enableActingMaster);
             brokerData.setZoneName(zoneName);
-
+            //broker地址map集合
             Map<Long, String> brokerAddrsMap = brokerData.getBrokerAddrs();
 
             boolean isMinBrokerIdChanged = false;
@@ -313,7 +313,12 @@ public class RouteInfoManager {
                     && brokerId == Collections.min(brokerAddrsMap.keySet());
 
             if (null != topicConfigWrapper && (isMaster || isPrimeSlave)) {
-
+                //：如果Broker为主节点，并且Broker的topic配置信息发生
+                //变化或者是初次注册，则需要创建或更新topic路由元数据，并填充
+                //topicQueueTable，其实就是为默认主题自动注册路由信息，其中包含
+                //MixAll.DEFAULT_TOPIC的路由信息。当消息生产者发送主题时，如果
+                //该主题未创建，并且BrokerConfig的autoCreateTopicEnable为true，
+                //则返回MixAll.DEFAULT_TOPIC的路由信
                 ConcurrentMap<String, TopicConfig> tcTable =
                         topicConfigWrapper.getTopicConfigTable();
                 if (tcTable != null) {
@@ -669,6 +674,12 @@ public class RouteInfoManager {
         return Collections.min(brokerData.getBrokerAddrs().keySet()) > 0;
     }
 
+    /**
+     * 根据topic查询topic路由信息
+     *
+     * @param topic
+     * @return
+     */
     public TopicRouteData pickupTopicRouteData(final String topic) {
         TopicRouteData topicRouteData = new TopicRouteData();
         boolean foundQueueData = false;
@@ -795,6 +806,8 @@ public class RouteInfoManager {
                 if ((last + timeoutMillis) < System.currentTimeMillis()) {
                     RemotingUtil.closeChannel(next.getValue().getChannel());
                     log.warn("The broker channel expired, {} {}ms", next.getKey(), timeoutMillis);
+                    //将它移除并关闭连接，最
+                    //后删除与该Broker相关的路由信息
                     this.onChannelDestroy(next.getKey());
                 }
             }
