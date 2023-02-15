@@ -27,9 +27,14 @@ public class QueueData implements Comparable<QueueData> {
     private int readQueueNums;
     // 写队列个数
     private int writeQueueNums;
-    // 权限操作
+    // Topic的读写权限(2是写 4是读 6是读写)
     private int perm;
     //  同步复制还是异步复制
+    /**
+     * 该字段对应TopicConfig.topicSysFlag
+     * 由创建Topic时-u/-s参数指定，不知道有何作用
+     * 参照：https://github.com/alibaba/RocketMQ/issues/206
+     */
     private int topicSysFlag;
 
     public QueueData() {

@@ -816,6 +816,12 @@ public class RouteInfoManager {
         }
     }
 
+    /**
+     * 清除离线的Broker信息
+     *
+     *  remoteAddr Broker的地址
+     *  channel    Broker和Name Server之间的连接通道，是一个NioSocketChannel实例
+     */
     public void onChannelDestroy(BrokerAddrInfo brokerAddrInfo) {
         UnRegisterBrokerRequestHeader unRegisterRequest = new UnRegisterBrokerRequestHeader();
         boolean needUnRegister = false;
@@ -1124,6 +1130,10 @@ class BrokerLiveInfo {
     private DataVersion dataVersion;
     //通道，即channel
     private Channel channel;
+    /**
+     * HA Broker的地址
+     * 是Slave从Master拉取数据时链接的地址，由brokerIp2+HA端口构成
+     */
     private String haServerAddr;
 
     public BrokerLiveInfo(long lastUpdateTimestamp, long heartbeatTimeoutMillis, DataVersion dataVersion,

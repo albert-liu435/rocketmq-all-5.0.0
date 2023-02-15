@@ -248,13 +248,19 @@ public class DefaultMQProducerImpl implements MQProducerInner {
                 this.serviceState = ServiceState.START_FAILED;
 
                 this.checkConfig();
-
+                //检查producerGroup是否符合要求，改变生产者的
+                //instanceName为进程ID
                 if (!this.defaultMQProducer.getProducerGroup().equals(MixAll.CLIENT_INNER_PRODUCER_GROUP)) {
                     this.defaultMQProducer.changeInstanceNameToPID();
                 }
-
+                //创建MQClientInstance实例。整个JVM实例中只存在一个
+                //MQClientManager实例，维护一个MQClientInstance缓存表
+                //ConcurrentMap<String/* clientId */, MQClientInstance>
+                //factoryTable =new ConcurrentHashMap<String, MQClientInstance>
+                //()，即同一个clientId只会创建一个MQClientInstance实例。
                 this.mQClientFactory = MQClientManager.getInstance().getOrCreateMQClientInstance(this.defaultMQProducer, rpcHook);
-
+                //向MQClientInstance注册服务，将当前生产者加入
+                //MQClientInstance管理，方便后续调用网络请求、进行心跳检测等。
                 boolean registerOK = mQClientFactory.registerProducer(this.defaultMQProducer.getProducerGroup(), this);
                 if (!registerOK) {
                     this.serviceState = ServiceState.CREATE_JUST;
@@ -264,7 +270,8 @@ public class DefaultMQProducerImpl implements MQProducerInner {
                 }
 
                 this.topicPublishInfoTable.put(this.defaultMQProducer.getCreateTopicKey(), new TopicPublishInfo());
-
+                //启动MQClientInstance，如果MQClientInstance已经启
+                //动，则本次启动不会真正执行
                 if (startFactory) {
                     mQClientFactory.start();
                 }
@@ -636,6 +643,20 @@ public class DefaultMQProducerImpl implements MQProducerInner {
 
     }
 
+    /**
+     * 消息发送流程主要的步骤为验证消息、查找路由、消息发送（包
+     * 含异常处理机制）
+     *
+     * @param msg
+     * @param communicationMode
+     * @param sendCallback
+     * @param timeout
+     * @return
+     * @throws MQClientException
+     * @throws RemotingException
+     * @throws MQBrokerException
+     * @throws InterruptedException
+     */
     private SendResult sendDefaultImpl(
             Message msg,
             final CommunicationMode communicationMode,
@@ -779,6 +800,12 @@ public class DefaultMQProducerImpl implements MQProducerInner {
                 null).setResponseCode(ClientErrorCode.NOT_FOUND_TOPIC_EXCEPTION);
     }
 
+    /**
+     * 查找topic的路由信息
+     *
+     * @param topic
+     * @return
+     */
     private TopicPublishInfo tryToFindTopicPublishInfo(final String topic) {
         //从本地缓存(ConcurrentMap< String/* topic */,  TopicPublishInfo>)中尝试获取，第一次肯定为空，走代码@2的流程
         TopicPublishInfo topicPublishInfo = this.topicPublishInfoTable.get(topic);

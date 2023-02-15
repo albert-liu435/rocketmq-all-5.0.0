@@ -60,6 +60,10 @@ public class Validators {
 
     /**
      * 校验消息
+     * 验证消息
+     * 是否符合相应的规范。具体的规范要求是主题名称、消息体不能为
+     * 空，消息长度不能等于0且默认不能超过允许发送消息的最大长度
+     * 4MB（maxMessageSize=1024×1024×4）。
      *
      * @param msg
      * @param defaultMQProducer

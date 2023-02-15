@@ -89,6 +89,8 @@ import static org.apache.rocketmq.common.rpc.ClientMetadata.topicRouteData2Endpo
 
 /**
  * MQ客户端类
+ * MQClientInstance封装了RocketMQ的网络处理API，是消息生产者、消
+ * 息消费者与NameServer、Broker打交道的网络通道。
  */
 public class MQClientInstance {
     private final static long LOCK_TIMEOUT_MILLIS = 3000;

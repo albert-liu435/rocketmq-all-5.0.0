@@ -82,7 +82,13 @@ public class ClientConfig {
     protected boolean enableStreamRequestType = false;
 
     /**
-     * 构建客服端ID
+     * clientId为客户端IP+instance+unitname（可选），如果在同一
+     * 台物理服务器部署两个应用程序，应用程序的clientId岂不是相同，
+     * 这样是不是会造成混乱？
+     * 为了避免出现这个问题，如果instance为默认值DEFAULT，
+     * RocketMQ会自动将instance设置为进程ID，这样就避免了不同进程相
+     * 互影响，但同一个JVM中相同clientId的消费者和生产者在启动时获取
+     * 的MQClientInstane实例都是同一个
      *
      * @return
      */

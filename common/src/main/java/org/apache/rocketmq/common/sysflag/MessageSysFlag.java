@@ -22,7 +22,7 @@ public class MessageSysFlag {
 
     /**
      * Meaning of each bit in the system flag
-     *
+     * <p>
      * | bit    | 7 | 6 | 5         | 4        | 3           | 2                | 1                | 0                |
      * |--------|---|---|-----------|----------|-------------|------------------|------------------|------------------|
      * | byte 1 |   |   | STOREHOST | BORNHOST | TRANSACTION | TRANSACTION      | MULTI_TAGS       | COMPRESSED       |
