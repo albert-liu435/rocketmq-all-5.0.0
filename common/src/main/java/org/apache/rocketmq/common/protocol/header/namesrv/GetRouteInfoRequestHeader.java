@@ -29,7 +29,7 @@ import org.apache.rocketmq.remoting.exception.RemotingCommandException;
  * 自定义路由header
  */
 public class GetRouteInfoRequestHeader implements CommandCustomHeader {
-
+    //topic信息
     @CFNotNull
     private String topic;
 

@@ -28,13 +28,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+
 import org.apache.rocketmq.common.statictopic.TopicQueueMappingInfo;
 import org.apache.rocketmq.remoting.protocol.RemotingSerializable;
 
 public class TopicRouteData extends RemotingSerializable {
     private String orderTopicConf;
+    //topic队列元数据
     private List<QueueData> queueDatas;
+    //topic分布的broker元数据
     private List<BrokerData> brokerDatas;
+    //broker上过滤服务器的地址列表
     private HashMap<String/* brokerAddr */, List<String>/* Filter Server */> filterServerTable;
     //It could be null or empty
     private Map<String/*brokerName*/, TopicQueueMappingInfo> topicQueueMappingByBroker;
@@ -100,7 +104,7 @@ public class TopicRouteData extends RemotingSerializable {
 
         for (final Map.Entry<String, List<String>> listEntry : this.filterServerTable.entrySet()) {
             topicRouteData.getFilterServerTable().put(listEntry.getKey(),
-                new ArrayList<String>(listEntry.getValue()));
+                    new ArrayList<String>(listEntry.getValue()));
         }
         if (this.topicQueueMappingByBroker != null) {
             Map<String, TopicQueueMappingInfo> cloneMap = new HashMap<>(this.topicQueueMappingByBroker.size());
@@ -222,6 +226,6 @@ public class TopicRouteData extends RemotingSerializable {
     @Override
     public String toString() {
         return "TopicRouteData [orderTopicConf=" + orderTopicConf + ", queueDatas=" + queueDatas
-            + ", brokerDatas=" + brokerDatas + ", filterServerTable=" + filterServerTable + ", topicQueueMappingInfoTable=" + topicQueueMappingByBroker + "]";
+                + ", brokerDatas=" + brokerDatas + ", filterServerTable=" + filterServerTable + ", topicQueueMappingInfoTable=" + topicQueueMappingByBroker + "]";
     }
 }

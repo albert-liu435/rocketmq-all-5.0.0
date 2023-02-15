@@ -17,9 +17,27 @@
 
 package org.apache.rocketmq.client.latency;
 
+/**
+ * 延迟机制接口规范
+ *
+ * @param <T>
+ */
 public interface LatencyFaultTolerance<T> {
+    /**
+     * 更新失败条目。
+     *
+     * @param name
+     * @param currentLatency
+     * @param notAvailableDuration
+     */
     void updateFaultItem(final T name, final long currentLatency, final long notAvailableDuration);
 
+    /**
+     * 判断是否可用
+     *
+     * @param name
+     * @return
+     */
     boolean isAvailable(final T name);
 
     void remove(final T name);

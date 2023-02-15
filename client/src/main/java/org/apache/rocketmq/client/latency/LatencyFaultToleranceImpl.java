@@ -22,6 +22,7 @@ import java.util.Enumeration;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
+
 import org.apache.rocketmq.client.common.ThreadLocalIndex;
 
 public class LatencyFaultToleranceImpl implements LatencyFaultTolerance<String> {
@@ -29,6 +30,16 @@ public class LatencyFaultToleranceImpl implements LatencyFaultTolerance<String> 
 
     private final ThreadLocalIndex whichItemWorst = new ThreadLocalIndex();
 
+    /**
+     * name：Broker名称。
+     * currentLatency：消息发送故障的延迟时间。
+     * notAvailableDuration：不可用持续时长，在这个时间内，
+     * Broker将被规避。
+     *
+     * @param name
+     * @param currentLatency
+     * @param notAvailableDuration
+     */
     @Override
     public void updateFaultItem(final String name, final long currentLatency, final long notAvailableDuration) {
         FaultItem old = this.faultItemTable.get(name);
@@ -48,6 +59,13 @@ public class LatencyFaultToleranceImpl implements LatencyFaultTolerance<String> 
         }
     }
 
+    /**
+     * 判断Broker是否可
+     * 用。
+     *
+     * @param name
+     * @return
+     */
     @Override
     public boolean isAvailable(final String name) {
         final FaultItem faultItem = this.faultItemTable.get(name);
@@ -57,11 +75,23 @@ public class LatencyFaultToleranceImpl implements LatencyFaultTolerance<String> 
         return true;
     }
 
+    /**
+     * 移除失败条目，意味着Broker
+     * 重新参与路由计算。
+     *
+     * @param name
+     */
     @Override
     public void remove(final String name) {
         this.faultItemTable.remove(name);
     }
 
+    /**
+     * 尝试从规避的Broker中选择一个可用的
+     * Broker，如果没有找到，则返回null。
+     *
+     * @return
+     */
     @Override
     public String pickOneAtLeast() {
         final Enumeration<FaultItem> elements = this.faultItemTable.elements();
@@ -86,14 +116,21 @@ public class LatencyFaultToleranceImpl implements LatencyFaultTolerance<String> 
     @Override
     public String toString() {
         return "LatencyFaultToleranceImpl{" +
-            "faultItemTable=" + faultItemTable +
-            ", whichItemWorst=" + whichItemWorst +
-            '}';
+                "faultItemTable=" + faultItemTable +
+                ", whichItemWorst=" + whichItemWorst +
+                '}';
     }
 
+    /**
+     * 失败条目（规避规则条目）。
+     */
     class FaultItem implements Comparable<FaultItem> {
+        //Broker名称
         private final String name;
+        //消息发送故障的延迟时间
         private volatile long currentLatency;
+        //故障规避的开始时
+        //间。
         private volatile long startTimestamp;
 
         public FaultItem(final String name) {
@@ -157,10 +194,10 @@ public class LatencyFaultToleranceImpl implements LatencyFaultTolerance<String> 
         @Override
         public String toString() {
             return "FaultItem{" +
-                "name='" + name + '\'' +
-                ", currentLatency=" + currentLatency +
-                ", startTimestamp=" + startTimestamp +
-                '}';
+                    "name='" + name + '\'' +
+                    ", currentLatency=" + currentLatency +
+                    ", startTimestamp=" + startTimestamp +
+                    '}';
         }
 
         public String getName() {

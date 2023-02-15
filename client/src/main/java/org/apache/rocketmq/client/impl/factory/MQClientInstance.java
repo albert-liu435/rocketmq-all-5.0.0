@@ -599,6 +599,18 @@ public class MQClientInstance {
         }
     }
 
+    /**
+     * 如果isDefault为true，则使用默认主题查询，如果查询
+     * 到路由信息，则将路由信息中读写队列的个数替换为消息生产者默认
+     * 的队列个数（defaultTopicQueueNums）；如果isDefault为false，则
+     * 使用参数topic查询，如果未查询到路由信息，则返回false，表示路
+     * 由信息未变化，
+     *
+     * @param topic
+     * @param isDefault
+     * @param defaultMQProducer
+     * @return
+     */
     public boolean updateTopicRouteInfoFromNameServer(final String topic, boolean isDefault,
                                                       DefaultMQProducer defaultMQProducer) {
         try {
@@ -606,6 +618,7 @@ public class MQClientInstance {
             if (this.lockNamesrv.tryLock(LOCK_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS)) {
                 try {
                     TopicRouteData topicRouteData;
+                    //如果isDefault为true，则使用默认主题查询
                     if (isDefault && defaultMQProducer != null) {
                         //@2
 
@@ -626,11 +639,20 @@ public class MQClientInstance {
                         //@3
                         topicRouteData = this.mQClientAPIImpl.getTopicRouteInfoFromNameServer(topic, clientConfig.getMqClientApiTimeout());
                     }
+
+                    //如果找到路由信息，则与本地缓存中的路由信息进行对
+                    //比，判断路由信息是否发生了改变，如果未发生变化，则直接返回
+                    //false。
+
+                    //表示获取新的路由信息
                     if (topicRouteData != null) {
                         //代码@4、@5、@6：从这里开始，拿到最新的 topic 路由信息后，需要与本地缓存中的 topic 发布信息进行比较，如果有变化，则需要同步更新发送者、消费者关于该 topic 的缓存。
                         TopicRouteData old = this.topicRouteTable.get(topic);//@4
+                        //相同返回false
                         boolean changed = topicRouteData.topicRouteDataChanged(old); //@5
+                        //判断信息是否变化，如果
                         if (!changed) {
+                            //相同的话直接更新陆游与信息
                             changed = this.isNeedUpdateTopicRouteInfo(topic);//@6
                         } else {
                             log.info("the topic[{}] route info changed, old[{}] ,new[{}]", topic, old, topicRouteData);
@@ -652,6 +674,10 @@ public class MQClientInstance {
 
                             // Update Pub info
                             //更新订阅者的缓存（消费队列信息）
+                            //将topicRouteData中的List<QueueData> 转换成
+                            //topicPublishInfo的List <MessageQueue>列表，具体实现在
+                            //topicRouteData2TopicPublishInfo中。然后更新该MQClientInstance
+                            //管辖的所有消息，发送关于topic的路由信息
                             {
                                 TopicPublishInfo publishInfo = topicRouteData2TopicPublishInfo(topic, topicRouteData);
                                 publishInfo.setHaveTopicRouterInfo(true);

@@ -36,6 +36,9 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+/**
+ * 客服端元数据类
+ */
 public class ClientMetadata {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.COMMON_LOGGER_NAME);
 
@@ -48,12 +51,12 @@ public class ClientMetadata {
 
     public void freshTopicRoute(String topic, TopicRouteData topicRouteData) {
         if (topic == null
-            || topicRouteData == null) {
+                || topicRouteData == null) {
             return;
         }
         TopicRouteData old = this.topicRouteTable.get(topic);
         if (!topicRouteData.topicRouteDataChanged(old)) {
-            return ;
+            return;
         }
         {
             for (BrokerData bd : topicRouteData.getBrokerDatas()) {
@@ -79,7 +82,7 @@ public class ClientMetadata {
 
     public void refreshClusterInfo(ClusterInfo clusterInfo) {
         if (clusterInfo == null
-            || clusterInfo.getBrokerAddrTable() == null) {
+                || clusterInfo.getBrokerAddrTable() == null) {
             return;
         }
         for (Map.Entry<String, BrokerData> entry : clusterInfo.getBrokerAddrTable().entrySet()) {
@@ -119,13 +122,13 @@ public class ClientMetadata {
 
         for (Map.Entry<String, Map<String, TopicQueueMappingInfo>> mapEntry : mappingInfosByScope.entrySet()) {
             String scope = mapEntry.getKey();
-            Map<String, TopicQueueMappingInfo> topicQueueMappingInfoMap =  mapEntry.getValue();
+            Map<String, TopicQueueMappingInfo> topicQueueMappingInfoMap = mapEntry.getValue();
             ConcurrentMap<MessageQueue, TopicQueueMappingInfo> mqEndPoints = new ConcurrentHashMap<MessageQueue, TopicQueueMappingInfo>();
             List<Map.Entry<String, TopicQueueMappingInfo>> mappingInfos = new ArrayList<Map.Entry<String, TopicQueueMappingInfo>>(topicQueueMappingInfoMap.entrySet());
             Collections.sort(mappingInfos, new Comparator<Map.Entry<String, TopicQueueMappingInfo>>() {
                 @Override
                 public int compare(Map.Entry<String, TopicQueueMappingInfo> o1, Map.Entry<String, TopicQueueMappingInfo> o2) {
-                    return  (int) (o2.getValue().getEpoch() - o1.getValue().getEpoch());
+                    return (int) (o2.getValue().getEpoch() - o1.getValue().getEpoch());
                 }
             });
             int maxTotalNums = 0;
@@ -139,7 +142,7 @@ public class ClientMetadata {
                     int globalId = idEntry.getKey();
                     MessageQueue mq = new MessageQueue(topic, TopicQueueMappingUtils.getMockBrokerName(info.getScope()), globalId);
                     TopicQueueMappingInfo oldInfo = mqEndPoints.get(mq);
-                    if (oldInfo == null ||  oldInfo.getEpoch() <= info.getEpoch()) {
+                    if (oldInfo == null || oldInfo.getEpoch() <= info.getEpoch()) {
                         mqEndPoints.put(mq, info);
                     }
                 }

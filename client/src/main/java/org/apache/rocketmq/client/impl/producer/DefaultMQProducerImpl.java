@@ -626,10 +626,27 @@ public class DefaultMQProducerImpl implements MQProducerInner {
 
     }
 
+    /**
+     * 选择消息队列
+     *
+     * @param tpInfo
+     * @param lastBrokerName
+     * @return
+     */
     public MessageQueue selectOneMessageQueue(final TopicPublishInfo tpInfo, final String lastBrokerName) {
         return this.mqFaultStrategy.selectOneMessageQueue(tpInfo, lastBrokerName);
     }
 
+    /**
+     * currentLatency：本次消息发送的延迟时间。
+     * isolation：是否规避Broker，该参数如果为true，则使用默认时
+     * 长30s来计算Broker故障规避时长，如果为false，则使用本次消
+     * 息发送延迟时间来计算Broker故障规避时长。
+     *
+     * @param brokerName
+     * @param currentLatency
+     * @param isolation
+     */
     public void updateFaultItem(final String brokerName, final long currentLatency, boolean isolation) {
         this.mqFaultStrategy.updateFaultItem(brokerName, currentLatency, isolation);
     }
@@ -672,15 +689,29 @@ public class DefaultMQProducerImpl implements MQProducerInner {
         long endTimestamp = beginTimestampFirst;
         //获取topic的路由信息
         TopicPublishInfo topicPublishInfo = this.tryToFindTopicPublishInfo(msg.getTopic());
+        //根据路由信息选择消息队列，返回的消息队列按照broker序号进
+        //行排序。举例说明，如果topicA在broker-a、broker-b上分别创建了4
+        //个队列，那么返回的消息队列为[{"brokerName":"brokera"
+        //、"queueId":0}、{"brokerName":"broker-a"、"queueId":1}、
+        //{"brokerName":"broker-a"、"queueId":2}、
+        //{"brokerName":"broker-a"、"queueId":3}、
+        //{"brokerName":"broker-b"、"queueId":0}、
+        //{"brokerName":"broker-b"、"queueId":1}、
+        //{"brokerName":"broker-b"、"queueId":2}、
+        //{"brokerName":"broker-b"、"queueId":3}]，那么RocketMQ如何选择
+        //消息队列呢？
+
         if (topicPublishInfo != null && topicPublishInfo.ok()) {
             boolean callTimeout = false;
             MessageQueue mq = null;
             Exception exception = null;
             SendResult sendResult = null;
+            //总的发送次数
             int timesTotal = communicationMode == CommunicationMode.SYNC ? 1 + this.defaultMQProducer.getRetryTimesWhenSendFailed() : 1;
             int times = 0;
             String[] brokersSent = new String[timesTotal];
             for (; times < timesTotal; times++) {
+                //上次选用的brokerName,即选择发送消息失败的broker
                 String lastBrokerName = null == mq ? null : mq.getBrokerName();
                 //根据topic负载均衡算法选择一个MessageQueue。
                 MessageQueue mqSelected = this.selectOneMessageQueue(topicPublishInfo, lastBrokerName);
@@ -725,6 +756,9 @@ public class DefaultMQProducerImpl implements MQProducerInner {
                     } catch (RemotingException e) {
                         endTimestamp = System.currentTimeMillis();
                         //更新失败策略,主要用于规避发生故障的 broke
+                        //如果在发送过程中抛出了异常，则调用
+                        //DefaultMQProducerImpl#updateFaultItem方法，该方法直接调用
+                        //MQFaultStrategy#updateFaultItem方法
                         this.updateFaultItem(mq.getBrokerName(), endTimestamp - beginTimestampPrev, true);
                         log.warn(String.format("sendKernelImpl exception, resend at once, InvokeID: %s, RT: %sms, Broker: %s", invokeID, endTimestamp - beginTimestampPrev, mq), e);
                         log.warn(msg.toString());
@@ -802,6 +836,14 @@ public class DefaultMQProducerImpl implements MQProducerInner {
 
     /**
      * 查找topic的路由信息
+     * 第一次发送消息时，本地没有缓存topic的路由信息，查询
+     * NameServer尝试获取路由信息，如果路由信息未找到，再次尝试用默
+     * 认主题DefaultMQProducerImpl#createTopicKey去查询。如果
+     * BrokerConfig#autoCreateTopicEnable为true，NameServer将返回路
+     * 由信息；如果autoCreateTopicEnable为false，将抛出无法找到topic
+     * 路由异常。MQClientInstance#up
+     * dateTopicRouteInfoFromNameServer方法的功能是更新消息生产者和
+     * 维护路由缓存
      *
      * @param topic
      * @return
@@ -826,6 +868,21 @@ public class DefaultMQProducerImpl implements MQProducerInner {
         }
     }
 
+    /**
+     * 发送消息
+     *
+     * @param msg 待发送消息
+     * @param mq 消息将放松到该消息队列上
+     * @param communicationMode 消息发送的模式，同步，异步，单向
+     * @param sendCallback 异步消息回调函数
+     * @param topicPublishInfo 主题陆游与信息
+     * @param timeout 消息发送超时时间
+     * @return
+     * @throws MQClientException
+     * @throws RemotingException
+     * @throws MQBrokerException
+     * @throws InterruptedException
+     */
     private SendResult sendKernelImpl(final Message msg,
                                       final MessageQueue mq,
                                       final CommunicationMode communicationMode,
