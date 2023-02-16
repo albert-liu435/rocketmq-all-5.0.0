@@ -17,6 +17,7 @@
 package org.apache.rocketmq.broker.processor;
 
 import io.netty.channel.ChannelHandlerContext;
+
 import java.net.SocketAddress;
 import java.util.List;
 import java.util.Map;
@@ -83,10 +84,10 @@ public abstract class AbstractSendMessageProcessor implements NettyRequestProces
     }
 
     protected RemotingCommand consumerSendMsgBack(final ChannelHandlerContext ctx, final RemotingCommand request)
-        throws RemotingCommandException {
+            throws RemotingCommandException {
         final RemotingCommand response = RemotingCommand.createResponseCommand(null);
         final ConsumerSendMsgBackRequestHeader requestHeader =
-            (ConsumerSendMsgBackRequestHeader) request.decodeCommandCustomHeader(ConsumerSendMsgBackRequestHeader.class);
+                (ConsumerSendMsgBackRequestHeader) request.decodeCommandCustomHeader(ConsumerSendMsgBackRequestHeader.class);
 
         // The send back requests sent to SlaveBroker will be forwarded to the master broker beside
         final BrokerController masterBroker = this.brokerController.peekMasterBroker();
@@ -101,11 +102,11 @@ public abstract class AbstractSendMessageProcessor implements NettyRequestProces
         final BrokerController currentBroker = this.brokerController;
 
         SubscriptionGroupConfig subscriptionGroupConfig =
-            masterBroker.getSubscriptionGroupManager().findSubscriptionGroupConfig(requestHeader.getGroup());
+                masterBroker.getSubscriptionGroupManager().findSubscriptionGroupConfig(requestHeader.getGroup());
         if (null == subscriptionGroupConfig) {
             response.setCode(ResponseCode.SUBSCRIPTION_GROUP_NOT_EXIST);
             response.setRemark("subscription group not exist, " + requestHeader.getGroup() + " "
-                + FAQUrl.suggestTodo(FAQUrl.SUBSCRIPTION_GROUP_NOT_EXIST));
+                    + FAQUrl.suggestTodo(FAQUrl.SUBSCRIPTION_GROUP_NOT_EXIST));
             return response;
         }
 
@@ -132,9 +133,9 @@ public abstract class AbstractSendMessageProcessor implements NettyRequestProces
 
         // Create retry topic to master broker
         TopicConfig topicConfig = masterBroker.getTopicConfigManager().createTopicInSendMessageBackMethod(
-            newTopic,
-            subscriptionGroupConfig.getRetryQueueNums(),
-            PermName.PERM_WRITE | PermName.PERM_READ, topicSysFlag);
+                newTopic,
+                subscriptionGroupConfig.getRetryQueueNums(),
+                PermName.PERM_WRITE | PermName.PERM_READ, topicSysFlag);
         if (null == topicConfig) {
             response.setCode(ResponseCode.SYSTEM_ERROR);
             response.setRemark("topic[" + newTopic + "] not exist");
@@ -157,7 +158,7 @@ public abstract class AbstractSendMessageProcessor implements NettyRequestProces
 
         //for logic queue
         if (requestHeader.getOriginTopic() != null
-            && !msgExt.getTopic().equals(requestHeader.getOriginTopic())) {
+                && !msgExt.getTopic().equals(requestHeader.getOriginTopic())) {
             //here just do some fence in case of some unexpected offset is income
             response.setCode(ResponseCode.SYSTEM_ERROR);
             response.setRemark("look message by offset failed to check the topic name" + requestHeader.getOffset());
@@ -182,7 +183,7 @@ public abstract class AbstractSendMessageProcessor implements NettyRequestProces
 
         boolean isDLQ = false;
         if (msgExt.getReconsumeTimes() >= maxReconsumeTimes
-            || delayLevel < 0) {
+                || delayLevel < 0) {
 
             isDLQ = true;
             newTopic = MixAll.getDLQTopic(requestHeader.getGroup());
@@ -190,8 +191,8 @@ public abstract class AbstractSendMessageProcessor implements NettyRequestProces
 
             // Create DLQ topic to master broker
             topicConfig = masterBroker.getTopicConfigManager().createTopicInSendMessageBackMethod(newTopic,
-                DLQ_NUMS_PER_GROUP,
-                PermName.PERM_WRITE | PermName.PERM_READ, 0);
+                    DLQ_NUMS_PER_GROUP,
+                    PermName.PERM_WRITE | PermName.PERM_READ, 0);
 
             if (null == topicConfig) {
                 response.setCode(ResponseCode.SYSTEM_ERROR);
@@ -250,21 +251,21 @@ public abstract class AbstractSendMessageProcessor implements NettyRequestProces
 
                     if (isDLQ) {
                         masterBroker.getBrokerStatsManager().incDLQStatValue(
-                            BrokerStatsManager.SNDBCK2DLQ_TIMES,
-                            commercialOwner,
-                            requestHeader.getGroup(),
-                            requestHeader.getOriginTopic(),
-                            BrokerStatsManager.StatsType.SEND_BACK_TO_DLQ.name(),
-                            1);
+                                BrokerStatsManager.SNDBCK2DLQ_TIMES,
+                                commercialOwner,
+                                requestHeader.getGroup(),
+                                requestHeader.getOriginTopic(),
+                                BrokerStatsManager.StatsType.SEND_BACK_TO_DLQ.name(),
+                                1);
 
                         String uniqKey = msgInner.getProperties().get(MessageConst.PROPERTY_UNIQ_CLIENT_MESSAGE_ID_KEYIDX);
                         DLQ_LOG.info("send msg to DLQ {}, owner={}, originalTopic={}, consumerId={}, msgUniqKey={}, storeTimestamp={}",
-                            newTopic,
-                            commercialOwner,
-                            requestHeader.getOriginTopic(),
-                            requestHeader.getGroup(),
-                            uniqKey,
-                            putMessageResult.getAppendMessageResult().getStoreTimestamp());
+                                newTopic,
+                                commercialOwner,
+                                requestHeader.getOriginTopic(),
+                                requestHeader.getGroup(),
+                                uniqKey,
+                                putMessageResult.getAppendMessageResult().getStoreTimestamp());
                     }
 
                     response.setCode(ResponseCode.SUCCESS);
@@ -285,12 +286,12 @@ public abstract class AbstractSendMessageProcessor implements NettyRequestProces
                 String owner = request.getExtFields().get(BrokerStatsManager.COMMERCIAL_OWNER);
                 String uniqKey = msgInner.getProperties().get(MessageConst.PROPERTY_UNIQ_CLIENT_MESSAGE_ID_KEYIDX);
                 DLQ_LOG.info("failed to send msg to DLQ {}, owner={}, originalTopic={}, consumerId={}, msgUniqKey={}, result={}",
-                    newTopic,
-                    owner,
-                    requestHeader.getOriginTopic(),
-                    requestHeader.getGroup(),
-                    uniqKey,
-                    "null");
+                        newTopic,
+                        owner,
+                        requestHeader.getOriginTopic(),
+                        requestHeader.getGroup(),
+                        uniqKey,
+                        "null");
             }
 
             response.setCode(ResponseCode.SYSTEM_ERROR);
@@ -345,7 +346,7 @@ public abstract class AbstractSendMessageProcessor implements NettyRequestProces
     }
 
     protected SendMessageContext buildMsgContext(ChannelHandlerContext ctx,
-        SendMessageRequestHeader requestHeader) {
+                                                 SendMessageRequestHeader requestHeader) {
         String namespace = NamespaceUtil.getNamespaceFromResource(requestHeader.getTopic());
 
         SendMessageContext traceContext;
@@ -384,7 +385,7 @@ public abstract class AbstractSendMessageProcessor implements NettyRequestProces
     }
 
     protected MessageExtBrokerInner buildInnerMsg(final ChannelHandlerContext ctx,
-        final SendMessageRequestHeader requestHeader, final byte[] body, TopicConfig topicConfig) {
+                                                  final SendMessageRequestHeader requestHeader, final byte[] body, TopicConfig topicConfig) {
         int queueIdInt = requestHeader.getQueueId();
         if (queueIdInt < 0) {
             queueIdInt = randomQueueId(topicConfig.getWriteQueueNums());
@@ -400,10 +401,10 @@ public abstract class AbstractSendMessageProcessor implements NettyRequestProces
         msgInner.setBody(body);
         msgInner.setFlag(requestHeader.getFlag());
         MessageAccessor.setProperties(msgInner,
-            MessageDecoder.string2messageProperties(requestHeader.getProperties()));
+                MessageDecoder.string2messageProperties(requestHeader.getProperties()));
         msgInner.setPropertiesString(requestHeader.getProperties());
         msgInner.setTagsCode(MessageExtBrokerInner.tagsString2tagsCode(topicConfig.getTopicFilterType(),
-            msgInner.getTags()));
+                msgInner.getTags()));
 
         msgInner.setQueueId(queueIdInt);
         msgInner.setSysFlag(sysFlag);
@@ -411,7 +412,7 @@ public abstract class AbstractSendMessageProcessor implements NettyRequestProces
         msgInner.setBornHost(ctx.channel().remoteAddress());
         msgInner.setStoreHost(this.getStoreHost());
         msgInner.setReconsumeTimes(requestHeader.getReconsumeTimes() == null ? 0 : requestHeader
-            .getReconsumeTimes());
+                .getReconsumeTimes());
         return msgInner;
     }
 
@@ -420,26 +421,26 @@ public abstract class AbstractSendMessageProcessor implements NettyRequestProces
     }
 
     protected RemotingCommand msgContentCheck(final ChannelHandlerContext ctx,
-        final SendMessageRequestHeader requestHeader, RemotingCommand request,
-        final RemotingCommand response) {
+                                              final SendMessageRequestHeader requestHeader, RemotingCommand request,
+                                              final RemotingCommand response) {
         String topic = requestHeader.getTopic();
         if (topic.length() > Byte.MAX_VALUE) {
             LOGGER.warn("msgContentCheck: message topic length is too long, topic={}, topic length={}, threshold={}",
-                topic, topic.length(), Byte.MAX_VALUE);
+                    topic, topic.length(), Byte.MAX_VALUE);
             response.setCode(ResponseCode.MESSAGE_ILLEGAL);
             return response;
         }
         if (requestHeader.getProperties() != null && requestHeader.getProperties().length() > Short.MAX_VALUE) {
             LOGGER.warn(
-                "msgContentCheck: message properties length is too long, topic={}, properties length={}, threshold={}",
-                topic, requestHeader.getProperties().length(), Short.MAX_VALUE);
+                    "msgContentCheck: message properties length is too long, topic={}, properties length={}, threshold={}",
+                    topic, requestHeader.getProperties().length(), Short.MAX_VALUE);
             response.setCode(ResponseCode.MESSAGE_ILLEGAL);
             return response;
         }
         if (request.getBody().length > DBMsgConstants.MAX_BODY_SIZE) {
             LOGGER.warn(
-                "msgContentCheck: message body size exceeds the threshold, topic={}, body size={}, threshold={}bytes",
-                topic, request.getBody().length, DBMsgConstants.MAX_BODY_SIZE);
+                    "msgContentCheck: message body size exceeds the threshold, topic={}, body size={}, threshold={}bytes",
+                    topic, request.getBody().length, DBMsgConstants.MAX_BODY_SIZE);
             response.setRemark("msg body must be less 64KB");
             response.setCode(ResponseCode.MESSAGE_ILLEGAL);
             return response;
@@ -447,14 +448,23 @@ public abstract class AbstractSendMessageProcessor implements NettyRequestProces
         return response;
     }
 
+    /**
+     * 检查消息发送是否合理
+     *
+     * @param ctx
+     * @param requestHeader
+     * @param request
+     * @param response
+     * @return
+     */
     protected RemotingCommand msgCheck(final ChannelHandlerContext ctx,
-        final SendMessageRequestHeader requestHeader, final RemotingCommand request,
-        final RemotingCommand response) {
+                                       final SendMessageRequestHeader requestHeader, final RemotingCommand request,
+                                       final RemotingCommand response) {
         if (!PermName.isWriteable(this.brokerController.getBrokerConfig().getBrokerPermission())
-            && this.brokerController.getTopicConfigManager().isOrderTopic(requestHeader.getTopic())) {
+                && this.brokerController.getTopicConfigManager().isOrderTopic(requestHeader.getTopic())) {
             response.setCode(ResponseCode.NO_PERMISSION);
             response.setRemark("the broker[" + this.brokerController.getBrokerConfig().getBrokerIP1()
-                + "] sending message is forbidden");
+                    + "] sending message is forbidden");
             return response;
         }
 
@@ -466,7 +476,7 @@ public abstract class AbstractSendMessageProcessor implements NettyRequestProces
         }
 
         TopicConfig topicConfig =
-            this.brokerController.getTopicConfigManager().selectTopicConfig(requestHeader.getTopic());
+                this.brokerController.getTopicConfigManager().selectTopicConfig(requestHeader.getTopic());
         if (null == topicConfig) {
             int topicSysFlag = 0;
             if (requestHeader.isUnitMode()) {
@@ -479,24 +489,24 @@ public abstract class AbstractSendMessageProcessor implements NettyRequestProces
 
             LOGGER.warn("the topic {} not exist, producer: {}", requestHeader.getTopic(), ctx.channel().remoteAddress());
             topicConfig = this.brokerController.getTopicConfigManager().createTopicInSendMessageMethod(
-                requestHeader.getTopic(),
-                requestHeader.getDefaultTopic(),
-                RemotingHelper.parseChannelRemoteAddr(ctx.channel()),
-                requestHeader.getDefaultTopicQueueNums(), topicSysFlag);
+                    requestHeader.getTopic(),
+                    requestHeader.getDefaultTopic(),
+                    RemotingHelper.parseChannelRemoteAddr(ctx.channel()),
+                    requestHeader.getDefaultTopicQueueNums(), topicSysFlag);
 
             if (null == topicConfig) {
                 if (requestHeader.getTopic().startsWith(MixAll.RETRY_GROUP_TOPIC_PREFIX)) {
                     topicConfig =
-                        this.brokerController.getTopicConfigManager().createTopicInSendMessageBackMethod(
-                            requestHeader.getTopic(), 1, PermName.PERM_WRITE | PermName.PERM_READ,
-                            topicSysFlag);
+                            this.brokerController.getTopicConfigManager().createTopicInSendMessageBackMethod(
+                                    requestHeader.getTopic(), 1, PermName.PERM_WRITE | PermName.PERM_READ,
+                                    topicSysFlag);
                 }
             }
 
             if (null == topicConfig) {
                 response.setCode(ResponseCode.TOPIC_NOT_EXIST);
                 response.setRemark("topic[" + requestHeader.getTopic() + "] not exist, apply first please!"
-                    + FAQUrl.suggestTodo(FAQUrl.APPLY_TOPIC_URL));
+                        + FAQUrl.suggestTodo(FAQUrl.APPLY_TOPIC_URL));
                 return response;
             }
         }
@@ -505,9 +515,9 @@ public abstract class AbstractSendMessageProcessor implements NettyRequestProces
         int idValid = Math.max(topicConfig.getWriteQueueNums(), topicConfig.getReadQueueNums());
         if (queueIdInt >= idValid) {
             String errorInfo = String.format("request queueId[%d] is illegal, %s Producer: %s",
-                queueIdInt,
-                topicConfig,
-                RemotingHelper.parseChannelRemoteAddr(ctx.channel()));
+                    queueIdInt,
+                    topicConfig,
+                    RemotingHelper.parseChannelRemoteAddr(ctx.channel()));
 
             LOGGER.warn(errorInfo);
             response.setCode(ResponseCode.SYSTEM_ERROR);
@@ -523,21 +533,21 @@ public abstract class AbstractSendMessageProcessor implements NettyRequestProces
     }
 
     protected void doResponse(ChannelHandlerContext ctx, RemotingCommand request,
-        final RemotingCommand response) {
+                              final RemotingCommand response) {
         if (!request.isOnewayRPC()) {
             try {
                 ctx.writeAndFlush(response);
             } catch (Throwable e) {
                 LOGGER.error(
-                    "SendMessageProcessor finished processing the request, but failed to send response, client "
-                        + "address={}, request={}, response={}", RemotingHelper.parseChannelRemoteAddr(ctx.channel()),
-                    request.toString(), response.toString(), e);
+                        "SendMessageProcessor finished processing the request, but failed to send response, client "
+                                + "address={}, request={}, response={}", RemotingHelper.parseChannelRemoteAddr(ctx.channel()),
+                        request.toString(), response.toString(), e);
             }
         }
     }
 
     public void executeSendMessageHookBefore(final ChannelHandlerContext ctx, final RemotingCommand request,
-        SendMessageContext context) {
+                                             SendMessageContext context) {
         if (hasSendMessageHook()) {
             for (SendMessageHook hook : this.sendMessageHookList) {
                 try {
@@ -582,7 +592,7 @@ public abstract class AbstractSendMessageProcessor implements NettyRequestProces
                 try {
                     if (response != null) {
                         final SendMessageResponseHeader responseHeader =
-                            (SendMessageResponseHeader) response.readCustomHeader();
+                                (SendMessageResponseHeader) response.readCustomHeader();
                         context.setMsgId(responseHeader.getMsgId());
                         context.setQueueId(responseHeader.getQueueId());
                         context.setQueueOffset(responseHeader.getQueueOffset());

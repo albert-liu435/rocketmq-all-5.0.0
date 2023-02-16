@@ -889,6 +889,10 @@ public class DefaultMQProducerImpl implements MQProducerInner {
                                       final SendCallback sendCallback,
                                       final TopicPublishInfo topicPublishInfo,
                                       final long timeout) throws MQClientException, RemotingException, MQBrokerException, InterruptedException {
+        //根据MessageQueue获取Broker的网络地址。如果
+        //MQClientInstance的brokerAddrTable未缓存该Broker的信息，则从
+        //NameServer主动更新topic的路由信息。如果路由更新后还是找不到
+        //Broker信息，则抛出MQClientException，提示Broker不存在，
         long beginStartTime = System.currentTimeMillis();
         String brokerName = this.mQClientFactory.getBrokerNameFromMessageQueue(mq);
         String brokerAddr = this.mQClientFactory.findBrokerAddressInPublish(brokerName);
@@ -904,6 +908,11 @@ public class DefaultMQProducerImpl implements MQProducerInner {
 
             byte[] prevBody = msg.getBody();
             try {
+                //                //为消息分配全局唯一ID，如果消息体默认超过
+                //                //4KB（compressMsgBody-OverHowmuch），则对消息体采用zip压缩，并
+                //                //设置消息的系统标记为MessageSysFlag.COMPRESSED_FLAG。如果是事
+                //                //务Prepared消息，则设置消息的系统标记为MessageSysFlag.
+                //                //TRANSACTION_PREPARED_TYPE，
                 //for MessageBatch,ID has been set in the generating process
                 if (!(msg instanceof MessageBatch)) {
                     MessageClientIDSetter.setUniqID(msg);
@@ -940,6 +949,10 @@ public class DefaultMQProducerImpl implements MQProducerInner {
                     this.executeCheckForbiddenHook(checkForbiddenContext);
                 }
 
+
+                //如果注册了消息发送钩子函数，则执行消息发送之前的
+                //增强逻辑。通过DefaultMQProducerImpl#registerSendMessageHook注
+                //册钩子处理类，并且可以注册多个
                 if (this.hasSendMessageHook()) {
                     context = new SendMessageContext();
                     context.setProducer(this);
@@ -960,7 +973,12 @@ public class DefaultMQProducerImpl implements MQProducerInner {
                     }
                     this.executeSendMessageHookBefore(context);
                 }
-
+                //构建消息发送请求包
+                //主要包含如下重要信息：生产者组、主题名称、默认创建主题
+                //key、该主题在单个Broker上的默认队列数、队列ID（队列序号）、消
+                //息系统标记（MessageSysFlag）、消息发送时间、消息标记
+                //（RocketMQ对消息中的标记不做任何处理，供应用程序使用）、消息
+                //扩展属性、消息重试次数、是否是批量消息等
                 SendMessageRequestHeader requestHeader = new SendMessageRequestHeader();
                 requestHeader.setProducerGroup(this.defaultMQProducer.getProducerGroup());
                 requestHeader.setTopic(msg.getTopic());

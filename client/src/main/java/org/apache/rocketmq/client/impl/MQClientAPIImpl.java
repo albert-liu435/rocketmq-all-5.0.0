@@ -592,7 +592,8 @@ public class MQClientAPIImpl implements NameServerUpdateCallback {
             }
         }
         request.setBody(msg.getBody());
-
+        //根据消息发送方式（同步、异步、单向）进行网络传
+        //输
         switch (communicationMode) {
             case ONEWAY:
                 this.remotingClient.invokeOneway(addr, request, timeoutMillis);
