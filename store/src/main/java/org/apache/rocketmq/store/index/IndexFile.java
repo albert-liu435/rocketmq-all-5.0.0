@@ -29,6 +29,9 @@ import org.apache.rocketmq.store.logfile.DefaultMappedFile;
 import org.apache.rocketmq.store.logfile.MappedFile;
 
 /**
+ * 消息索引，主要存储消息key与offset的对应关系。
+ * <p>
+ * <p>
  * IndexFile（索引文件）提供了一种可以通过key或时间区间来查询消息的方法。Index文件的存储位置是：HOME\store\index{fileName}，文件名fileName是以创建时的时间戳命名的，
  * 固定的单个IndexFile文件大小约为400M，一个IndexFile可以保存 2000W个索引，IndexFile的底层存储设计为在文件系统中实现HashMap结构，故rocketmq的索引文件其底层实现为hash索引。
  * <p>

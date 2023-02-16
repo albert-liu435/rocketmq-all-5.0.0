@@ -59,6 +59,8 @@ import org.apache.rocketmq.common.attribute.CQType;
 
 
 /**
+ * 消息存储，所有消息主题的消息都存储在CommitLog文件中。
+ * <p>
  * Store all metadata downtime for recovery, data protection reliability
  * 消息主体以及元数据的存储主体，存储Producer端写入的消息主体内容,消息内容不是定长的。单个文件大小默认1G ，文件名长度为20位，左边补零，剩余为起始偏移量，比如00000000000000000000代表了第一个文件，
  * 起始偏移量为0，文件大小为1G=1073741824；当第一个文件写满了，第二个文件为00000000001073741824，起始偏移量为1073741824，以此类推。消息主要是顺序写入日志文件，当文件满了，写入下一个文件
@@ -552,6 +554,42 @@ public class CommitLog implements Swappable {
         }
     }
 
+    /**
+     * 1）TOTALSIZE：消息条目总长度，4字节。
+     * 2）MAGICCODE：魔数，4字节。固定值0xdaa320a7。
+     * 3）BODYCRC：消息体的crc校验码，4字节。
+     * 4）QUEUEID：消息消费队列ID，4字节。
+     * 5）FLAG：消息标记，RocketMQ对其不做处理，供应用程序使用，
+     * 默认4字节。
+     * 6）QUEUEOFFSET：消息在ConsumeQuene文件中的物理偏移量，8字
+     * 节。
+     * 7）PHYSICALOFFSET：消息在CommitLog文件中的物理偏移量，8字
+     * 节。
+     * 8）SYSFLAG：消息系统标记，例如是否压缩、是否是事务消息
+     * 等，4字节。
+     * 9）BORNTIMESTAMP：消息生产者调用消息发送API的时间戳，8字
+     * 节。
+     * 10）BORNHOST：消息发送者IP、端口号，8字节。
+     * 11）STORETIMESTAMP：消息存储时间戳，8字节。
+     * 12）STOREHOSTADDRESS：Broker服务器IP+端口号，8字节。
+     * 13）RECONSUMETIMES：消息重试次数，4字节。
+     * 14）Prepared Transaction Offset：事务消息的物理偏移量，8
+     * 字节。
+     * 15）BodyLength：消息体长度，4字节。
+     * 16）Body：消息体内容，长度为bodyLenth中存储的值。
+     * 17）TopicLength：主题存储长度，1字节，表示主题名称不能超
+     * 过255个字符。
+     * 18）Topic：主题，长度为TopicLength中存储的值。
+     * 19）PropertiesLength：消息属性长度，2字节，表示消息属性长
+     * 度不能超过65536个字符。
+     * 20）Properties：消息属性，长度为PropertiesLength中存储的
+     * 值。
+     * @param sysFlag
+     * @param bodyLength
+     * @param topicLength
+     * @param propertiesLength
+     * @return
+     */
     protected static int calMsgLength(int sysFlag, int bodyLength, int topicLength, int propertiesLength) {
         int bornhostLength = (sysFlag & MessageSysFlag.BORNHOST_V6_FLAG) == 0 ? 8 : 20;
         int storehostAddressLength = (sysFlag & MessageSysFlag.STOREHOSTADDRESS_V6_FLAG) == 0 ? 8 : 20;
@@ -782,7 +820,14 @@ public class CommitLog implements Swappable {
         }
     }
 
+    /**
+     * 异步写入消息到commitlog文件
+     *
+     * @param msg
+     * @return
+     */
     public CompletableFuture<PutMessageResult> asyncPutMessage(final MessageExtBrokerInner msg) {
+        //设置存储时间
         // Set the storage time
         if (!defaultMessageStore.getMessageStoreConfig().isDuplicationEnable()) {
             // Set the storage time
@@ -793,9 +838,9 @@ public class CommitLog implements Swappable {
         msg.setBodyCRC(UtilAll.crc32(msg.getBody()));
         // Back to Results
         AppendMessageResult result = null;
-
+        //存储服务
         StoreStatsService storeStatsService = this.defaultMessageStore.getStoreStatsService();
-
+        //主题
         String topic = msg.getTopic();
 
         InetSocketAddress bornSocketAddress = (InetSocketAddress) msg.getBornHost();
@@ -810,11 +855,12 @@ public class CommitLog implements Swappable {
 
         PutMessageThreadLocal putMessageThreadLocal = this.putMessageThreadLocal.get();
         updateMaxMessageSize(putMessageThreadLocal);
+        //生成主题队列key
         String topicQueueKey = generateKey(putMessageThreadLocal.getKeyBuilder(), msg);
         long elapsedTimeInLock = 0;
         MappedFile unlockMappedFile = null;
         MappedFile mappedFile = this.mappedFileQueue.getLastMappedFile();
-
+        //当前偏移量
         long currOffset;
         if (mappedFile == null) {
             currOffset = 0;
@@ -1888,7 +1934,8 @@ public class CommitLog implements Swappable {
             final int topicLength = topicData.length;
 
             final int bodyLength = msgInner.getBody() == null ? 0 : msgInner.getBody().length;
-
+            //根据消息体、主题和属性的长度，结合消息存储格式，
+            //计算消息的总长度
             final int msgLen = calMsgLength(msgInner.getSysFlag(), bodyLength, topicLength, propertiesLength);
 
             // Exceeds the maximum message body

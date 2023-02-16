@@ -107,7 +107,9 @@ public class BrokerConfig extends BrokerIdentity {
     private int loadBalanceThreadPoolQueueCapacity = 100000;
 
     private int filterServerNums = 0;
-
+    //短轮询：longPollingEnable=false，第一次未拉取到消息后等待
+    //shortPollingTimeMills时间后再试。shortPollingTimeMills默认为
+    //1s。
     private boolean longPollingEnable = true;
 
     private long shortPollingTimeMills = 1000;

@@ -19,6 +19,9 @@ package org.apache.rocketmq.store.hook;
 import org.apache.rocketmq.common.message.MessageExt;
 import org.apache.rocketmq.store.PutMessageResult;
 
+/**
+ * 消息存储钩子函数
+ */
 public interface PutMessageHook {
 
     /**
@@ -29,7 +32,9 @@ public interface PutMessageHook {
     String hookName();
 
     /**
-     *  Execute before put message. For example, Message verification or special message transform
+     * 在存储消息之前执行
+     * Execute before put message. For example, Message verification or special message transform
+     *
      * @param msg
      * @return
      */

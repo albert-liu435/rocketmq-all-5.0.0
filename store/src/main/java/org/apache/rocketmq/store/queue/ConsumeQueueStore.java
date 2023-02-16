@@ -54,6 +54,8 @@ public class ConsumeQueueStore {
     protected final MessageStoreConfig messageStoreConfig;
     protected final QueueOffsetAssigner queueOffsetAssigner = new QueueOffsetAssigner();
     //topic 的队列信息。
+    //消息队列存储缓存表，
+    //按消息主题分组。
     protected final ConcurrentMap<String/* topic */, ConcurrentMap<Integer/* queueId */, ConsumeQueueInterface>> consumeQueueTable;
 
     // Should be careful, do not change the topic config

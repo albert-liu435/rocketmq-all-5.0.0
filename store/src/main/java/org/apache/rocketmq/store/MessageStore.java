@@ -73,6 +73,7 @@ public interface MessageStore {
     void destroy();
 
     /**
+     * 异步消息存储方法
      * Store a message into store in async manner, the processor can process the next request rather than wait for
      * result when result is completed, notify the client in async manner
      *
@@ -94,6 +95,7 @@ public interface MessageStore {
     }
 
     /**
+     * 消息存储方法
      * Store a message into store.
      *
      * @param msg Message instance to store

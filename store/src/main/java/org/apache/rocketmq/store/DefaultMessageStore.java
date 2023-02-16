@@ -107,10 +107,11 @@ public class DefaultMessageStore implements MessageStore {
     private final MessageStoreConfig messageStoreConfig;
     // CommitLog
     //comitLog 的核心处理类，消息存储在 commitlog 文件中。
+    //CommitLog文件的存储实现类。
     private final CommitLog commitLog;
 
     private final ConsumeQueueStore consumeQueueStore;
-    //ConsumeQueue 刷盘服务线程。
+    //ConsumeQueue 文件刷盘服务线程。
     private final FlushConsumeQueueService flushConsumeQueueService;
     //commitLog 过期文件删除线程。
     private final CleanCommitLogService cleanCommitLogService;
@@ -124,11 +125,11 @@ public class DefaultMessageStore implements MessageStore {
     private final AllocateMappedFileService allocateMappedFileService;
     //reput 转发线程（负责 Commitlog 转发到 Consumequeue、Index文件）。
     private ReputMessageService reputMessageService;
-    //主从同步实现服务。
+    //主从同步高可用实现服务。
     private HAService haService;
     //存储统计服务。
     private final StoreStatsService storeStatsService;
-    //ByteBuffer 池
+    //ByteBuffer 池，消息堆内存缓存
     private final TransientStorePool transientStorePool;
     //存储服务状态。
     private final RunningFlags runningFlags = new RunningFlags();
@@ -138,11 +139,13 @@ public class DefaultMessageStore implements MessageStore {
     //Broker 统计服务。
     private final BrokerStatsManager brokerStatsManager;
     //消息达到监听器。
+    //在消息拉取长轮询模式下的消息达到监听器
     private final MessageArrivingListener messageArrivingListener;
+    //Broker配置属性
     private final BrokerConfig brokerConfig;
 
     private volatile boolean shutdown = true;
-    //刷盘检测点。
+    //文件刷盘检测点。
     private StoreCheckpoint storeCheckpoint;
     private TimerMessageStore timerMessageStore;
 
@@ -497,9 +500,15 @@ public class DefaultMessageStore implements MessageStore {
         this.consumeQueueStore.destroy();
     }
 
+    /**
+     * 异步消息存储方法
+     *
+     * @param msg MessageInstance to store
+     * @return
+     */
     @Override
     public CompletableFuture<PutMessageResult> asyncPutMessage(MessageExtBrokerInner msg) {
-
+        //遍历消息存储钩子函数
         for (PutMessageHook putMessageHook : putMessageHookList) {
             PutMessageResult handleResult = putMessageHook.executeBeforePutMessage(msg);
             if (handleResult != null) {
@@ -520,7 +529,7 @@ public class DefaultMessageStore implements MessageStore {
                 return CompletableFuture.completedFuture(new PutMessageResult(PutMessageStatus.MESSAGE_ILLEGAL, null));
             }
         }
-
+        //开始时间
         long beginTime = this.getSystemClock().now();
         //将日志写入CommitLog 文件，具体实现类 CommitLog。
         CompletableFuture<PutMessageResult> putResultFuture = this.commitLog.asyncPutMessage(msg);
@@ -571,6 +580,12 @@ public class DefaultMessageStore implements MessageStore {
         return putResultFuture;
     }
 
+    /**
+     * 消息存储方法
+     *
+     * @param msg Message instance to store
+     * @return
+     */
     @Override
     public PutMessageResult putMessage(MessageExtBrokerInner msg) {
         return waitForPutResult(asyncPutMessage(msg));
@@ -2418,6 +2433,9 @@ public class DefaultMessageStore implements MessageStore {
         }
     }
 
+    /**
+     * reput 转发线程（负责 Commitlog 转发到 Consumequeue、Index文件）。
+     */
     class ReputMessageService extends ServiceThread {
 
         private volatile long reputFromOffset = 0;
@@ -2488,7 +2506,17 @@ public class DefaultMessageStore implements MessageStore {
                             if (dispatchRequest.isSuccess()) {
                                 if (size > 0) {
                                     DefaultMessageStore.this.doDispatch(dispatchRequest);
+                                    //短轮询：longPollingEnable=false，第一次未拉取到消息后等待
+                                    //shortPollingTimeMills时间后再试。shortPollingTimeMills默认为
+                                    //1s。
 
+                                    //长轮询：longPollingEnable=true，以消费者端设置的挂起超时
+                                    //时间为依据，受Default MQPullConsumer的
+                                    //brokerSuspendMaxTimeMillis控制，默认20s，长轮询有两个线程来相
+                                    //互实现。PullRequestHoldService默认每隔5s重试一次。
+                                    //DefaultMessageStore#ReputMessageService方法在每当有消息到达
+                                    //后，转发消息，然后调用PullRequestHoldService线程中的拉取任
+                                    //务，尝试拉取，每处理一次，线程休眠1ms，继续下一次检查。
                                     if (DefaultMessageStore.this.brokerConfig.isLongPollingEnable()
                                             && DefaultMessageStore.this.messageArrivingListener != null) {
                                         DefaultMessageStore.this.messageArrivingListener.arriving(dispatchRequest.getTopic(),
