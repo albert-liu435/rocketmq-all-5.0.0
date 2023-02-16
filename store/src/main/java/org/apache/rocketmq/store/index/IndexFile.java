@@ -29,6 +29,13 @@ import org.apache.rocketmq.store.logfile.DefaultMappedFile;
 import org.apache.rocketmq.store.logfile.MappedFile;
 
 /**
+ * Index文件基于物理磁盘文件实现哈希索引。Index文件由40字节
+ * 的文件头、500万个哈希槽、2000万个Index条目组成，每个哈希槽4字
+ * 节、每个Index条目含有20个字节，分别为4字节索引key的哈希码、8
+ * 字节消息物理偏移量、4字节时间戳、4字节的前一个Index条目（哈希
+ * 冲突的链表结构）。
+ * <p>
+ * <p>
  * 消息索引，主要存储消息key与offset的对应关系。
  * <p>
  * <p>

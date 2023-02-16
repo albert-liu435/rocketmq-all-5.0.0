@@ -22,21 +22,32 @@ import java.util.function.Supplier;
  * When write a message to the commit log, returns results
  */
 public class AppendMessageResult {
+    //AppendMessageStatus status：消息追加结果，取值为PUT_OK
+    //则代表追加成功、END_OF_FILE则代表超过文件大小、
+    //MESSAGE_SIZE_EXCEEDED则代表消息长度超过最大允许长度、
+    //PROPERTIES_SIZE_EXCEEDED则代表消息属性超过最大允许长度、
+    //UNKNOWN_ERROR则代表未知异常。
     // Return code
     private AppendMessageStatus status;
     // Where to start writing
+    //消息的物理偏移量
     private long wroteOffset;
     // Write Bytes
     private int wroteBytes;
     // Message ID
+    //消息ID
     private String msgId;
     private Supplier<String> msgIdSupplier;
     // Message storage timestamp
+    //消息存储时间戳
     private long storeTimestamp;
     // Consume queue's offset(step by one)
+    //消息消费队列的逻辑偏移量，类似于数
+    //组下标。
     private long logicsOffset;
+    //写入页缓存的响应时间
     private long pagecacheRT = 0;
-
+    //批量发送消息时的消息条数。
     private int msgNum = 1;
 
     public AppendMessageResult(AppendMessageStatus status) {

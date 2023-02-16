@@ -36,6 +36,12 @@ import org.apache.rocketmq.logging.InternalLoggerFactory;
 import org.apache.rocketmq.store.logfile.DefaultMappedFile;
 import org.apache.rocketmq.store.logfile.MappedFile;
 
+/**
+ * MappedFileQueue是MappedFile的管理容器，MappedFileQueue对
+ * 存储目录进行封装，例如CommitLog文件的存储路径为
+ * ${ROCKET_HOME}/store/commitlog/，该目录下会存在多个内存映射文
+ * 件MappedFile
+ */
 public class MappedFileQueue implements Swappable {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
     private static final InternalLogger LOG_ERROR = InternalLoggerFactory.getLogger(LoggerName.STORE_ERROR_LOGGER_NAME);

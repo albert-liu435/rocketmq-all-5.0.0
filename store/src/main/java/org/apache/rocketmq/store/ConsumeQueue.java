@@ -42,6 +42,20 @@ import org.apache.rocketmq.store.queue.QueueOffsetAssigner;
 import org.apache.rocketmq.store.queue.ReferredIterator;
 
 /**
+ * ConsumeQueue文件是消息消费队列文件，是CommitLog文件基于
+ * topic的索引文件，主要用于消费者根据topic消费消息，其组织方式
+ * 为/topic/queue，同一个队列中存在多个消息文件。ConsumeQueue的
+ * 设计极具技巧，每个条目长度固定（8字节CommitLog物理偏移量、4字
+ * 节消息长度、8字节tag哈希码）。这里不是存储tag的原始字符串，而
+ * 是存储哈希码，目的是确保每个条目的长度固定，可以使用访问类似
+ * 数组下标的方式快速定位条目，极大地提高了ConsumeQueue文件的读
+ * 取性能。消息消费者根据topic、消息消费进度（ConsumeQueue逻辑偏
+ * 移量），即第几个ConsumeQueue条目，这样的消费进度去访问消息，
+ * 通过逻辑偏移量logicOffset×20，即可找到该条目的起始偏移量
+ * （ConsumeQueue文件中的偏移量），然后读取该偏移量后20个字节即
+ * 可得到一个条目，无须遍历ConsumeQueue文件。
+ *
+ *
  * 消息消费队列，消息到达CommitLog文件后，将异步转发到ConsumeQuene文件中，供消息消费者消费。
  * <p>
  * <p>
