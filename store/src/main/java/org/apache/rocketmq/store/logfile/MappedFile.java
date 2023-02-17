@@ -70,10 +70,11 @@ public interface MappedFile {
     boolean isAvailable();
 
     /**
+     * 写消息到当前的MappedFile
      * Appends a message object to the current {@code MappedFile} with a specific call back.
      *
-     * @param message a message to append
-     * @param messageCallback the specific call back to execute the real append action
+     * @param message           a message to append
+     * @param messageCallback   the specific call back to execute the real append action
      * @param putMessageContext
      * @return the append result
      */
@@ -82,8 +83,8 @@ public interface MappedFile {
     /**
      * Appends a batch message object to the current {@code MappedFile} with a specific call back.
      *
-     * @param message a message to append
-     * @param messageCallback the specific call back to execute the real append action
+     * @param message           a message to append
+     * @param messageCallback   the specific call back to execute the real append action
      * @param putMessageContext
      * @return the append result
      */
@@ -109,7 +110,7 @@ public interface MappedFile {
      * Appends a raw message data represents by a byte array to the current {@code MappedFile},
      * starting at the given offset in the array.
      *
-     * @param data the byte array to append
+     * @param data   the byte array to append
      * @param offset the offset within the array of the first byte to be read
      * @param length the number of bytes to be read from the given array
      * @return true if success; false otherwise.
@@ -117,6 +118,7 @@ public interface MappedFile {
     boolean appendMessage(byte[] data, int offset, int length);
 
     /**
+     * 获取当前文件位置的偏移量
      * Returns the global offset of the current {code MappedFile}, it's a long value of the file name.
      *
      * @return the offset of this file
@@ -143,7 +145,7 @@ public interface MappedFile {
      * Selects a slice of the mapped byte buffer's sub-region behind the mapped file,
      * starting at the given position.
      *
-     * @param pos the given position
+     * @param pos  the given position
      * @param size the size of the returned sub-region
      * @return a {@code SelectMappedBufferResult} instance contains the selected slice
      */
@@ -189,8 +191,8 @@ public interface MappedFile {
     /**
      * Get data from a certain pos offset with size byte
      *
-     * @param pos a certain pos offset to get data
-     * @param size the size of data
+     * @param pos        a certain pos offset to get data
+     * @param size       the size of data
      * @param byteBuffer the data
      * @return true if with data; false if no data;
      */
@@ -253,6 +255,7 @@ public interface MappedFile {
     void setFlushedPosition(int flushedPosition);
 
     /**
+     * 返回当前文件可写的位置指针
      * Returns the wrote position of this mapped file.
      *
      * @return the wrote position
@@ -292,6 +295,7 @@ public interface MappedFile {
 
     /**
      * Warm up the mapped bytebuffer
+     *
      * @param type
      * @param pages
      */
@@ -319,20 +323,23 @@ public interface MappedFile {
 
     /**
      * Get the underlying file
+     *
      * @return
      */
     File getFile();
 
     /**
      * Get the last flush time
+     *
      * @return
      */
     long getLastFlushTime();
 
     /**
      * Init mapped file
-     * @param fileName file name
-     * @param fileSize file size
+     *
+     * @param fileName           file name
+     * @param fileSize           file size
      * @param transientStorePool transient store pool
      * @throws IOException
      */

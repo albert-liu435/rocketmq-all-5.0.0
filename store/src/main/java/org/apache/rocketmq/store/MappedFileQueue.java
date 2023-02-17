@@ -45,16 +45,19 @@ import org.apache.rocketmq.store.logfile.MappedFile;
 public class MappedFileQueue implements Swappable {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
     private static final InternalLogger LOG_ERROR = InternalLoggerFactory.getLogger(LoggerName.STORE_ERROR_LOGGER_NAME);
-
+    //存储目录
     protected final String storePath;
-
+    //单个文件大小
     protected final int mappedFileSize;
-
+    //MappedFile文件集合
     protected final CopyOnWriteArrayList<MappedFile> mappedFiles = new CopyOnWriteArrayList<MappedFile>();
-
+    //创建MappedFile服务类
     protected final AllocateMappedFileService allocateMappedFileService;
-
+    //当前刷盘指针，表示该指针之前的所有数据全部持久化到磁盘
     protected long flushedWhere = 0;
+    //当前数据提交指针
+    //当前数据提交指针，内存中
+    //ByteBuffer当前的写指针，该值大于、等于flushedWhere。
     protected long committedWhere = 0;
 
     protected volatile long storeTimestamp = 0;
@@ -85,6 +88,14 @@ public class MappedFileQueue implements Swappable {
         }
     }
 
+    /**
+     * 根据消息存储时间戳查找MappdFile。从MappedFile列表中第一个
+     * 文件开始查找，找到第一个最后一次更新时间大于待查找时间戳的文
+     * 件，如果不存在，则返回最后一个MappedFile
+     *
+     * @param timestamp
+     * @return
+     */
     public MappedFile getMappedFileByTime(final long timestamp) {
         Object[] mfs = this.copyMappedFiles(0);
 
@@ -266,6 +277,7 @@ public class MappedFileQueue implements Swappable {
     }
 
     public MappedFile getLastMappedFile() {
+        //
         MappedFile[] mappedFiles = this.mappedFiles.toArray(new MappedFile[0]);
         return mappedFiles.length == 0 ? null : mappedFiles[mappedFiles.length - 1];
     }

@@ -867,6 +867,7 @@ public class CommitLog implements Swappable {
         String topicQueueKey = generateKey(putMessageThreadLocal.getKeyBuilder(), msg);
         long elapsedTimeInLock = 0;
         MappedFile unlockMappedFile = null;
+
         //
         MappedFile mappedFile = this.mappedFileQueue.getLastMappedFile();
         //当前偏移量
@@ -898,6 +899,8 @@ public class CommitLog implements Swappable {
             }
         }
 
+
+        //
         topicQueueLock.lock(topicQueueKey);
         try {
 
@@ -916,12 +919,12 @@ public class CommitLog implements Swappable {
             }
             msg.setEncodedBuff(putMessageThreadLocal.getEncoder().getEncoderBuffer());
             PutMessageContext putMessageContext = new PutMessageContext(topicQueueKey);
-
+            //读写锁
             putMessageLock.lock(); //spin or ReentrantLock ,depending on store config
             try {
                 long beginLockTimestamp = this.defaultMessageStore.getSystemClock().now();
                 this.beginTimeInLock = beginLockTimestamp;
-
+                //设置消息存储时间
                 // Here settings are stored timestamp, in order to ensure an orderly
                 // global
                 if (!defaultMessageStore.getMessageStoreConfig().isDuplicationEnable()) {
@@ -931,12 +934,18 @@ public class CommitLog implements Swappable {
                 if (null == mappedFile || mappedFile.isFull()) {
                     mappedFile = this.mappedFileQueue.getLastMappedFile(0); // Mark: NewFile may be cause noise
                 }
+                //如果mappedFile为空，表明
+                //${ROCKET_HOME}/store/commitlog目录下不存在任何文件，说明本次
+                //消息是第一次发送，用偏移量0创建第一个CommitLog文件，文件名为
+                //00000000000000000000，如果文件创建失败，抛出
+                //CREATE_MAPEDFILE_FAILED，这很有可能是磁盘空间不足或权限不够导
+                //致的，
                 if (null == mappedFile) {
                     log.error("create mapped file1 error, topic: " + msg.getTopic() + " clientAddr: " + msg.getBornHostString());
                     beginTimeInLock = 0;
                     return CompletableFuture.completedFuture(new PutMessageResult(PutMessageStatus.CREATE_MAPPED_FILE_FAILED, null));
                 }
-
+                //
                 result = mappedFile.appendMessage(msg, this.appendMessageCallback, putMessageContext);
                 switch (result.getStatus()) {
                     case PUT_OK:
@@ -1148,6 +1157,12 @@ public class CommitLog implements Swappable {
         return needAckNums;
     }
 
+    /**
+     * 判断是否需要处理HA
+     *
+     * @param messageExt
+     * @return
+     */
     private boolean needHandleHA(MessageExt messageExt) {
 
         if (!messageExt.isWaitStoreMsgOK()) {
@@ -1302,6 +1317,12 @@ public class CommitLog implements Swappable {
         return diff;
     }
 
+    /**
+     * 获取消息数量
+     *
+     * @param msgInner
+     * @return
+     */
     protected short getMessageNum(MessageExtBrokerInner msgInner) {
         short messageNum = 1;
         // IF inner batch, build batchQueueOffset and batchNum property.
@@ -1731,6 +1752,11 @@ public class CommitLog implements Swappable {
         }
 
         /**
+         * ：DefaultAppendMessageCallback#doAppend只是将消息
+         * 追加到内存中，需要根据采取的是同步刷盘方式还是异步刷盘方式，
+         * 将内存中的数据持久化到磁盘中，4.8节会详细介绍刷盘操作。然后执
+         * 行HA主从同步复制
+         *
          * @param fileFromOffset    该文件在整个文件序列中的偏移量。
          * @param byteBuffer        byteBuffer，NIO 字节容器。
          * @param maxBlank          最大可写字节数。最大可写字节数。
@@ -1744,18 +1770,26 @@ public class CommitLog implements Swappable {
 
             // PHY OFFSET
             long wroteOffset = fileFromOffset + byteBuffer.position();
-            //创建msgId，底层存储由16个字节表示
+            //创建msgId，底层存储由16个字节表示。
+            //创建全局唯一消息ID，消息ID有16字节
+
+
             Supplier<String> msgIdSupplier = () -> {
                 int sysflag = msgInner.getSysFlag();
+                //4字节IP,4字节端口号，8字节消息偏移量
                 int msgIdLen = (sysflag & MessageSysFlag.STOREHOSTADDRESS_V6_FLAG) == 0 ? 4 + 4 + 8 : 16 + 4 + 8;
                 ByteBuffer msgIdBuffer = ByteBuffer.allocate(msgIdLen);
                 MessageExt.socketAddress2ByteBuffer(msgInner.getStoreHost(), msgIdBuffer);
                 msgIdBuffer.clear();//because socketAddress2ByteBuffer flip the buffer
                 msgIdBuffer.putLong(msgIdLen - 8, wroteOffset);
+                //为了消息ID具备可读性，返回给应用程序的msgId为字符类型，可
+                //以通过UtilAll. bytes2string方法将msgId字节数组转换成字符串，
+                //通过UtilAll.string2bytes方法将msgId字符串还原成16字节的数组，
+                //根据提取的消息物理偏移量，可以快速通过msgId找到消息内容
                 return UtilAll.bytes2string(msgIdBuffer.array());
             };
 
-            // Record ConsumeQueue information
+            // Record ConsumeQueue information 队列偏移量
             Long queueOffset = msgInner.getQueueOffset();
 
             // this msg maybe a inner-batch msg.
@@ -1778,6 +1812,12 @@ public class CommitLog implements Swappable {
             ByteBuffer preEncodeBuffer = msgInner.getEncodedBuff();
             final int msgLen = preEncodeBuffer.getInt(0);
 
+            //如果消息长度+END_FILE_MIN_BLANK_LENGTH大于
+            //CommitLog文件的空闲空间，则返回
+            //AppendMessageStatus.END_OF_FILE，Broker会创建一个新的
+            //CommitLog文件来存储该消息。从这里可以看出，每个CommitLog文件
+            //最少空闲8字节，高4字节存储当前文件的剩余空间，低4字节存储魔数
+            //CommitLog.BLANK_MAGIC_CODE，
             // Determines whether there is sufficient free space
             if ((msgLen + END_FILE_MIN_BLANK_LENGTH) > maxBlank) {
                 this.msgStoreItemMemory.clear();
@@ -1794,6 +1834,10 @@ public class CommitLog implements Swappable {
                         msgIdSupplier, msgInner.getStoreTimestamp(),
                         queueOffset, CommitLog.this.defaultMessageStore.now() - beginTimeMills);
             }
+
+            //将消息内容存储到ByteBuffer中，然后创建
+            //AppendMessageResult。这里只是将消息存储在MappedFile对应的内存
+            //映射Buffer中，并没有写入磁盘，
 
             int pos = 4 + 4 + 4 + 4 + 4;
             // 6 QUEUEOFFSET

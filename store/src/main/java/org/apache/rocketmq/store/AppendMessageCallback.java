@@ -28,6 +28,7 @@ import org.apache.rocketmq.common.message.MessageExtBrokerInner;
 public interface AppendMessageCallback {
 
     /**
+     * 消息序列化后写入到MapedByteBuffer
      * After message serialization, write MapedByteBuffer
      *
      * @return How many bytes to write

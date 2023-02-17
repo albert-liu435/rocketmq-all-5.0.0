@@ -293,6 +293,7 @@ public class MessageStoreConfig {
     private int totalReplicas = 1;
 
     /**
+     * 副本数
      * Each message must be written successfully to at least in-sync replicas.
      * The master broker is considered one of the in-sync replicas, and it's included in the count of total.
      * If a master broker is ASYNC_MASTER, inSyncReplicas will be ignored.

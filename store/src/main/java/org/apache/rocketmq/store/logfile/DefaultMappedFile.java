@@ -59,19 +59,21 @@ public class DefaultMappedFile extends AbstractMappedFile {
 //    著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。
 
 
-    //pageCache的大小
-    //OSpage大小，4K。
+    //操作系统页大小，默认4k
     public static final int OS_PAGE_SIZE = 1024 * 4;
     protected static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
     //文件已使用的映射虚拟内存
     //类变量，所有 MappedFile 实例已使用字节总数。
+    //当前JVM实例中MappedFile虚拟内存
     protected static final AtomicLong TOTAL_MAPPED_VIRTUAL_MEMORY = new AtomicLong(0);
     //映射额文件个数
-    //MappedFile 个数。
+    //MappedFile 个数。当前JVM实例中MappedFile对象个数
     protected static final AtomicInteger TOTAL_MAPPED_FILES = new AtomicInteger(0);
-
+    //当前文件的写指针，从0开始
     protected static final AtomicIntegerFieldUpdater<DefaultMappedFile> WROTE_POSITION_UPDATER;
+    //当前文件的提交指针，如果开启transientStorePoolEnable，则数据会存储在transientStorePoolEnable中，然后提交到内存映射ByteBuffer
     protected static final AtomicIntegerFieldUpdater<DefaultMappedFile> COMMITTED_POSITION_UPDATER;
+    //刷写到磁盘指针，该指针之前的数据持久化到磁盘中
     protected static final AtomicIntegerFieldUpdater<DefaultMappedFile> FLUSHED_POSITION_UPDATER;
     //已经写入的位置
     //当前MappedFile对象当前写指针。
@@ -83,7 +85,6 @@ public class DefaultMappedFile extends AbstractMappedFile {
     //当前刷写到磁盘的指针。
     protected volatile int flushedPosition;
     //文件大小
-    //文件总大小。
     protected int fileSize;
     //创建MappedByteBuffer用的
     //文件通道。
@@ -92,6 +93,8 @@ public class DefaultMappedFile extends AbstractMappedFile {
      * Message will put to here first, and then reput to FileChannel if writeBuffer is not null.
      * 消息将首先放在这里，如果writeBuffer不为空，则再放到FileChannel。
      * 如果开启了transientStorePoolEnable，消息会写入堆外内存，然后提交到 PageCache 并最终刷写到磁盘。
+     * <p>
+     * 堆内存ByteBuffer，如果不为空，数据首先将存储在该Buffer中，然后提交到MappedFile对应的内存映射文件Buffer。
      */
     protected ByteBuffer writeBuffer = null;
     //ByteBuffer的缓冲池，堆外内存，transientStorePoolEnable 为 true 时生效。
@@ -142,6 +145,7 @@ public class DefaultMappedFile extends AbstractMappedFile {
     public void init(final String fileName, final int fileSize,
                      final TransientStorePool transientStorePool) throws IOException {
         init(fileName, fileSize);
+        //开启了堆外内存
         this.writeBuffer = transientStorePool.borrowBuffer();
         this.transientStorePool = transientStorePool;
     }
@@ -248,16 +252,32 @@ public class DefaultMappedFile extends AbstractMappedFile {
         return appendMessagesInner(messageExtBatch, cb, putMessageContext);
     }
 
+    /**
+     * 将消息追加到MappedFile中。首先获取MappedFile当前
+     * 的写指针，如果currentPos大于或等于文件大小，表明文件已写满，
+     * 抛出AppendMessageStatus.UNKNOWN_ERROR。如果currentPos小于文件
+     * 大小，通过slice()方法创建一个与原ByteBuffer共享的内存区，且拥
+     * 有独立的position、limit、capacity等指针，并设置position为当前
+     * 指针，
+     *
+     * @param messageExt
+     * @param cb
+     * @param putMessageContext
+     * @return
+     */
     public AppendMessageResult appendMessagesInner(final MessageExt messageExt, final AppendMessageCallback cb,
                                                    PutMessageContext putMessageContext) {
         assert messageExt != null;
         assert cb != null;
         //        获取当前写的位置
+        //page cache的写指针位置
         int currentPos = WROTE_POSITION_UPDATER.get(this);
 
         if (currentPos < this.fileSize) {
             //这里的writeBuffer，如果在启动的时候配置了启用暂存池，这里的writeBuffer是堆外内存方式。获取byteBuffer
+            //开启了堆外内存就用堆外内存，否则用page cache
             ByteBuffer byteBuffer = appendMessageBuffer().slice();
+            //定位到写指针位置
             byteBuffer.position(currentPos);
             AppendMessageResult result;
             //根据消息类型，是批量消息还是单个消息，进入相应的处理
@@ -274,10 +294,12 @@ public class DefaultMappedFile extends AbstractMappedFile {
             } else {
                 return new AppendMessageResult(AppendMessageStatus.UNKNOWN_ERROR);
             }
+            //写指针后移bytes位
             WROTE_POSITION_UPDATER.addAndGet(this, result.getWroteBytes());
             this.storeTimestamp = result.getStoreTimestamp();
             return result;
         }
+        //表明文件写满
         log.error("MappedFile.appendMessage return null, wrotePosition: {} fileSize: {}", currentPos, this.fileSize);
         return new AppendMessageResult(AppendMessageStatus.UNKNOWN_ERROR);
     }
@@ -346,6 +368,8 @@ public class DefaultMappedFile extends AbstractMappedFile {
 
     /**
      *  flush方法比较简单，就是将fileChannel中的数据写入文件中。
+     * <p>
+     * 如果使用writeBuffer存储的话则调用fileChannel的force将内存中的数据持久化到磁盘，刷盘结束后，flushedPosition会等于committedPosition，否则调用mappedByteBuffer的force，最后flushedPosition会等于writePosition。
      *
      * @return The current flushed position
      */
@@ -355,6 +379,7 @@ public class DefaultMappedFile extends AbstractMappedFile {
             //检查文件是否有效，也就是有引用，并添加引用
             if (this.hold()) {
                 //获取写入的位置
+                //没开启对外内存使用写指针，否则使用提交指针
                 int value = getReadPosition();
 
                 try {
@@ -364,9 +389,11 @@ public class DefaultMappedFile extends AbstractMappedFile {
                     //如果writeBuffer不为null，说明用了临时存储池，说明前面已经把信息写入了writeBuffer了，直接刷新到磁盘就可以。
                     //fileChannel的位置不为0，说明已经设置了buffer进去了，直接刷新到磁盘
                     if (writeBuffer != null || this.fileChannel.position() != 0) {
+                        //使用了堆外内存，则使用send file 刷盘
                         this.fileChannel.force(false);
                     } else {
                         //如果数据在mappedByteBuffer中，则刷新mappedByteBuffer数据到磁盘
+                        //page cache 刷盘， mmap一般用于小文件映射，send file用于大文件，这里的mapper file都是使用mmap映射，对于commit log这种1G的大文件是否不合适呢？
                         this.mappedByteBuffer.force();
                     }
                     this.lastFlushTime = System.currentTimeMillis();
@@ -399,12 +426,16 @@ public class DefaultMappedFile extends AbstractMappedFile {
          * 直接写到映射区域中的，那么这个时候就不需要写入的fileChannel了。直接返回写入的位置作为已经提交的位置。
          *
          * writeBuffer 不为  null，说明用的是临时存储池，使用的堆外内存，那么这个时候需要先把信息提交到fileChannel中
+         *
+         * 这是commit代码，如果writeBuffer为空，直接返回wrotePosition指针，无需commit
          */
         if (writeBuffer == null) {
             //no need to commit data to file channel, so just regard wrotePosition as committedPosition.
             return WROTE_POSITION_UPDATER.get(this);
         }
         //检查是否需要刷盘
+        //isAbleToCommit（）用于判断是否可以commit。如果文件已满返回true，commitLeastPages为本次提交最小的页数，如果commitLeastPages > 0 ，则比较wrotePosition（当前writeBuffe的写指针）与上一次提交的指针（committedPosition）的差值，
+        // 除以OS_PAGE_SIZE 获取当前脏页的数量，如果大于commitLeastPages则返回true，反之false。
         if (this.isAbleToCommit(commitLeastPages)) {
             //检查当前文件是不是有效，就是当前文件还存在引用
             if (this.hold()) {
@@ -425,6 +456,10 @@ public class DefaultMappedFile extends AbstractMappedFile {
         return COMMITTED_POSITION_UPDATER.get(this);
     }
 
+    /**
+     * Commit0（）为具体的实现代码，首先创建writeBUffer的共享缓存区，然后将新创建的position回退到上一次提交的位置，设置limit为writePos（当前最大有效数据指针），然后把commitedPosition到wrotePosition的数据（未提交数据）
+     * 写入FileChannel中，然后更新committedPosition指针为wrotePosition。
+     */
     protected void commit0() {
         //获取已经写入的数据的位置
         int writePos = WROTE_POSITION_UPDATER.get(this);
@@ -433,9 +468,11 @@ public class DefaultMappedFile extends AbstractMappedFile {
         //如果还有没有提交的数据，则进行写入
         if (writePos - lastCommittedPosition > 0) {
             try {
+                //使用了堆外内存
                 ByteBuffer byteBuffer = writeBuffer.slice();
                 byteBuffer.position(lastCommittedPosition);
                 byteBuffer.limit(writePos);
+                //使用send file 写到堆外内存，并设置提交指针
                 this.fileChannel.position(lastCommittedPosition);
                 this.fileChannel.write(byteBuffer);
                 COMMITTED_POSITION_UPDATER.set(this, writePos);
@@ -583,6 +620,10 @@ public class DefaultMappedFile extends AbstractMappedFile {
 
     /**
      * 删除文件
+     * 关闭MqppedFile。设置available为false，若是第一次则设置关闭时间戳为当前系统时间，然后调用release（）方法尝试释放资源。
+     * release如果引用计数小于0，则调用cleanup（）方法，cleanup（）方法会判断当前mappedFile是否可用，或者资源是否被清理完成，如果没有，对于堆外内存，调用堆外内存的cleanup方法清除，维护MappedFile类变量TOTAL_MAPPED_VIRTUAL_MEMORY、TOTAL_MAPPED_FILES。
+     * （判断是否清理完成，标准是引用次数小于等于0并且cleanupOver为true，cleanupOver为true的触发条件是release成功将MappedByteBuffer资源释放。）
+     * 关闭文件通道，删除物理文件
      *
      * @param intervalForcibly If {@code true} then this method will destroy the file forcibly and ignore the reference
      * @return
