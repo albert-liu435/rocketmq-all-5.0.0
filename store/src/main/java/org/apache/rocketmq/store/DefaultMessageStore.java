@@ -511,17 +511,18 @@ public class DefaultMessageStore implements MessageStore {
         //遍历消息存储钩子函数
         for (PutMessageHook putMessageHook : putMessageHookList) {
             PutMessageResult handleResult = putMessageHook.executeBeforePutMessage(msg);
+            //如果不为null的话表示执行的时候出现了异常或者其他问题，此时直接返回即可
             if (handleResult != null) {
                 return CompletableFuture.completedFuture(handleResult);
             }
         }
-
+        //校验消息
         if (msg.getProperties().containsKey(MessageConst.PROPERTY_INNER_NUM)
                 && !MessageSysFlag.check(msg.getSysFlag(), MessageSysFlag.INNER_BATCH_FLAG)) {
             LOGGER.warn("[BUG]The message had property {} but is not an inner batch", MessageConst.PROPERTY_INNER_NUM);
             return CompletableFuture.completedFuture(new PutMessageResult(PutMessageStatus.MESSAGE_ILLEGAL, null));
         }
-
+        //校验消息
         if (MessageSysFlag.check(msg.getSysFlag(), MessageSysFlag.INNER_BATCH_FLAG)) {
             Optional<TopicConfig> topicConfig = this.getTopicConfig(msg.getTopic());
             if (!QueueTypeUtils.isBatchCq(topicConfig)) {
@@ -531,7 +532,7 @@ public class DefaultMessageStore implements MessageStore {
         }
         //开始时间
         long beginTime = this.getSystemClock().now();
-        //将日志写入CommitLog 文件，具体实现类 CommitLog。
+        //将消息写入CommitLog 文件，具体实现类 CommitLog。
         CompletableFuture<PutMessageResult> putResultFuture = this.commitLog.asyncPutMessage(msg);
 
         putResultFuture.thenAccept(result -> {
@@ -596,6 +597,12 @@ public class DefaultMessageStore implements MessageStore {
         return waitForPutResult(asyncPutMessages(messageExtBatch));
     }
 
+    /**
+     * 等待返回结果的消息存储方法
+     *
+     * @param putMessageResultFuture
+     * @return
+     */
     private PutMessageResult waitForPutResult(CompletableFuture<PutMessageResult> putMessageResultFuture) {
         try {
             int putMessageTimeout =
@@ -1650,6 +1657,11 @@ public class DefaultMessageStore implements MessageStore {
         this.consumeQueueStore.checkSelf();
     }
 
+    /**
+     * 判断临时文件是否存在
+     *
+     * @return
+     */
     private boolean isTempFileExist() {
         String fileName = StorePathConfigHelper.getAbortFile(this.messageStoreConfig.getStorePathRootDir());
         File file = new File(fileName);

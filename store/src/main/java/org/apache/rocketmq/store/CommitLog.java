@@ -146,6 +146,11 @@ public class CommitLog implements Swappable {
         return putMessageThreadLocal;
     }
 
+    /**
+     * 加载commitlog文件
+     *
+     * @return
+     */
     public boolean load() {
         boolean result = this.mappedFileQueue.load();
         this.mappedFileQueue.checkSelf();
@@ -584,6 +589,7 @@ public class CommitLog implements Swappable {
      * 度不能超过65536个字符。
      * 20）Properties：消息属性，长度为PropertiesLength中存储的
      * 值。
+     *
      * @param sysFlag
      * @param bodyLength
      * @param topicLength
@@ -833,9 +839,10 @@ public class CommitLog implements Swappable {
             // Set the storage time
             msg.setStoreTimestamp(System.currentTimeMillis());
         }
-
+        //设置消息CRC
         // Set the message body CRC (consider the most appropriate setting on the client)
         msg.setBodyCRC(UtilAll.crc32(msg.getBody()));
+        //返回存储结果
         // Back to Results
         AppendMessageResult result = null;
         //存储服务
@@ -852,13 +859,15 @@ public class CommitLog implements Swappable {
         if (storeSocketAddress.getAddress() instanceof Inet6Address) {
             msg.setStoreHostAddressV6Flag();
         }
-
+        //
         PutMessageThreadLocal putMessageThreadLocal = this.putMessageThreadLocal.get();
+        //更新最大消息size
         updateMaxMessageSize(putMessageThreadLocal);
         //生成主题队列key
         String topicQueueKey = generateKey(putMessageThreadLocal.getKeyBuilder(), msg);
         long elapsedTimeInLock = 0;
         MappedFile unlockMappedFile = null;
+        //
         MappedFile mappedFile = this.mappedFileQueue.getLastMappedFile();
         //当前偏移量
         long currOffset;
@@ -1898,11 +1907,16 @@ public class CommitLog implements Swappable {
 
     }
 
+    /**
+     * 消息编码器
+     */
     public static class MessageExtEncoder {
         private ByteBuf byteBuf;
+        //消息body的最大长度
         // The maximum length of the message body.
         private int maxMessageBodySize;
         // The maximum length of the full message.
+        //消息的最大长度
         private int maxMessageSize;
 
         MessageExtEncoder(final int maxMessageBodySize) {

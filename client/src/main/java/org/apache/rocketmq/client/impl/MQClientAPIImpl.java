@@ -572,6 +572,7 @@ public class MQClientAPIImpl implements NameServerUpdateCallback {
             final SendMessageContext context,
             final DefaultMQProducerImpl producer
     ) throws RemotingException, MQBrokerException, InterruptedException {
+
         long beginStartTime = System.currentTimeMillis();
         RemotingCommand request = null;
         String msgType = msg.getProperty(MessageConst.PROPERTY_MESSAGE_TYPE);

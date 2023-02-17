@@ -16,6 +16,9 @@
  */
 package org.apache.rocketmq.broker.mqtrace;
 
+/**
+ * 消费消息钩子函数
+ */
 public interface ConsumeMessageHook {
     String hookName();
 

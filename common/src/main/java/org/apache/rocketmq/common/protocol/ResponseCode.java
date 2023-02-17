@@ -19,6 +19,9 @@ package org.apache.rocketmq.common.protocol;
 
 import org.apache.rocketmq.remoting.protocol.RemotingSysResponseCode;
 
+/**
+ * 响应code
+ */
 public class ResponseCode extends RemotingSysResponseCode {
 
     public static final int FLUSH_DISK_TIMEOUT = 10;
