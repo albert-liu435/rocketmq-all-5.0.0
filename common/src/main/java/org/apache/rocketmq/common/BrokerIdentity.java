@@ -19,6 +19,7 @@ package org.apache.rocketmq.common;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.rocketmq.common.annotation.ImportantField;
@@ -27,6 +28,9 @@ import org.apache.rocketmq.logging.InnerLoggerFactory;
 import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.logging.InternalLoggerFactory;
 
+/**
+ * broker身份
+ */
 public class BrokerIdentity {
     private static final String DEFAULT_CLUSTER_NAME = "DefaultCluster";
     protected static final InternalLogger LOGGER = InternalLoggerFactory.getLogger(LoggerName.COMMON_LOGGER_NAME);
@@ -132,18 +136,18 @@ public class BrokerIdentity {
         final BrokerIdentity identity = (BrokerIdentity) o;
 
         return new EqualsBuilder()
-            .append(brokerId, identity.brokerId)
-            .append(brokerName, identity.brokerName)
-            .append(brokerClusterName, identity.brokerClusterName)
-            .isEquals();
+                .append(brokerId, identity.brokerId)
+                .append(brokerName, identity.brokerName)
+                .append(brokerClusterName, identity.brokerClusterName)
+                .isEquals();
     }
 
     @Override
     public int hashCode() {
         return new HashCodeBuilder(17, 37)
-            .append(brokerName)
-            .append(brokerClusterName)
-            .append(brokerId)
-            .toHashCode();
+                .append(brokerName)
+                .append(brokerClusterName)
+                .append(brokerId)
+                .toHashCode();
     }
 }

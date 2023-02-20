@@ -23,12 +23,18 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+
 import org.apache.rocketmq.common.UtilAll;
 import org.apache.rocketmq.logging.InternalLogger;
 
+/**
+ * 一个StatsItemSet，代表着一项数据统计指标，这个指标定义了各个key的统计单项StatsItem，具体的值和次数使用原子类表示
+ *
+ * BrokerStatsManager支持这些统一指标，同时每一个指标对应一个StateItemSet，里面包含了各个topic和group的信息
+ */
 public class StatsItemSet {
     private final ConcurrentMap<String/* key */, StatsItem> statsItemTable =
-        new ConcurrentHashMap<String, StatsItem>(128);
+            new ConcurrentHashMap<String, StatsItem>(128);
 
     private final String statsName;
     private final ScheduledExecutorService scheduledExecutorService;

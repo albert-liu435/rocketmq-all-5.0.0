@@ -21,6 +21,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
+
 import org.apache.rocketmq.client.impl.factory.MQClientInstance;
 import org.apache.rocketmq.client.log.ClientLogger;
 import org.apache.rocketmq.common.ServiceThread;
@@ -28,18 +29,30 @@ import org.apache.rocketmq.common.message.MessageRequestMode;
 import org.apache.rocketmq.common.utils.ThreadUtils;
 import org.apache.rocketmq.logging.InternalLogger;
 
+/**
+ * 拉取消息服务
+ * <p>
+ * 一个MQ客户端（MQClientInstance）只会创建一个消息拉取线程
+ * 向Broker拉取消息，并且同一时间只会拉取一个topic中的一个队列，
+ * 拉取线程一次向Broker拉取一批消息后，会提交到消费组的线程池，
+ * 然后“不知疲倦”地向Broker发起下一个拉取请求。
+ * RocketMQ客户端为每一个消费组创建独立的消费线程池，即在并
+ * 发消费模式下，单个消费组内的并发度为线程池线程个数。线程池处
+ * 理一批消息后会向Broker汇报消息消费进度。
+ */
 public class PullMessageService extends ServiceThread {
     private final InternalLogger log = ClientLogger.getLog();
+    //消息请求阻塞队列
     private final LinkedBlockingQueue<MessageRequest> messageRequestQueue = new LinkedBlockingQueue<MessageRequest>();
 
     private final MQClientInstance mQClientFactory;
     private final ScheduledExecutorService scheduledExecutorService = Executors
-        .newSingleThreadScheduledExecutor(new ThreadFactory() {
-            @Override
-            public Thread newThread(Runnable r) {
-                return new Thread(r, "PullMessageServiceScheduledThread");
-            }
-        });
+            .newSingleThreadScheduledExecutor(new ThreadFactory() {
+                @Override
+                public Thread newThread(Runnable r) {
+                    return new Thread(r, "PullMessageServiceScheduledThread");
+                }
+            });
 
     public PullMessageService(MQClientInstance mQClientFactory) {
         this.mQClientFactory = mQClientFactory;
@@ -99,7 +112,13 @@ public class PullMessageService extends ServiceThread {
         return scheduledExecutorService;
     }
 
+    /**
+     * 消息拉取
+     *
+     * @param pullRequest
+     */
     private void pullMessage(final PullRequest pullRequest) {
+        //选择一个内部消费者
         final MQConsumerInner consumer = this.mQClientFactory.selectConsumer(pullRequest.getConsumerGroup());
         if (consumer != null) {
             DefaultMQPushConsumerImpl impl = (DefaultMQPushConsumerImpl) consumer;
@@ -125,11 +144,13 @@ public class PullMessageService extends ServiceThread {
 
         while (!this.isStopped()) {
             try {
+                //从阻塞队列中获取一个任务
                 MessageRequest messageRequest = this.messageRequestQueue.take();
                 if (messageRequest.getMessageRequestMode() == MessageRequestMode.POP) {
-                    this.popMessage((PopRequest)messageRequest);
+                    this.popMessage((PopRequest) messageRequest);
                 } else {
-                    this.pullMessage((PullRequest)messageRequest);
+
+                    this.pullMessage((PullRequest) messageRequest);
                 }
             } catch (InterruptedException ignored) {
             } catch (Exception e) {

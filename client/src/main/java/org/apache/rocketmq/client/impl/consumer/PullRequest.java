@@ -19,6 +19,9 @@ package org.apache.rocketmq.client.impl.consumer;
 import org.apache.rocketmq.common.message.MessageQueue;
 import org.apache.rocketmq.common.message.MessageRequestMode;
 
+/**
+ * 拉取消息请求体
+ */
 public class PullRequest implements MessageRequest {
     private String consumerGroup;
     private MessageQueue messageQueue;
@@ -92,7 +95,7 @@ public class PullRequest implements MessageRequest {
     @Override
     public String toString() {
         return "PullRequest [consumerGroup=" + consumerGroup + ", messageQueue=" + messageQueue
-            + ", nextOffset=" + nextOffset + "]";
+                + ", nextOffset=" + nextOffset + "]";
     }
 
     public ProcessQueue getProcessQueue() {

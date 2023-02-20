@@ -22,7 +22,7 @@ import org.apache.rocketmq.common.ServiceThread;
 import org.apache.rocketmq.logging.InternalLogger;
 
 /**
- * 重新负载均衡
+ * 重新负载均衡,每隔20s进行一次队列重新负载，
  */
 public class RebalanceService extends ServiceThread {
     private static long waitInterval =

@@ -23,12 +23,13 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+
 import org.apache.rocketmq.common.UtilAll;
 import org.apache.rocketmq.logging.InternalLogger;
 
 public class MomentStatsItemSet {
     private final ConcurrentMap<String/* key */, MomentStatsItem> statsItemTable =
-        new ConcurrentHashMap<String, MomentStatsItem>(128);
+            new ConcurrentHashMap<String, MomentStatsItem>(128);
     private final String statsName;
     private final ScheduledExecutorService scheduledExecutorService;
     private final InternalLogger log;
@@ -61,6 +62,9 @@ public class MomentStatsItemSet {
         }, Math.abs(UtilAll.computeNextMinutesTimeMillis() - System.currentTimeMillis()), 1000 * 60 * 5, TimeUnit.MILLISECONDS);
     }
 
+    /**
+     * 每分钟打印一次
+     */
     private void printAtMinutes() {
         Iterator<Entry<String, MomentStatsItem>> it = this.statsItemTable.entrySet().iterator();
         while (it.hasNext()) {
@@ -98,7 +102,7 @@ public class MomentStatsItemSet {
         MomentStatsItem statsItem = this.statsItemTable.get(statsKey);
         if (null == statsItem) {
             statsItem =
-                new MomentStatsItem(this.statsName, statsKey, this.scheduledExecutorService, this.log);
+                    new MomentStatsItem(this.statsName, statsKey, this.scheduledExecutorService, this.log);
             MomentStatsItem prev = this.statsItemTable.putIfAbsent(statsKey, statsItem);
 
             if (null != prev) {

@@ -34,6 +34,7 @@ public abstract class ServiceThread implements Runnable {
     protected Thread thread;
     protected final CountDownLatch2 waitPoint = new CountDownLatch2(1);
     protected volatile AtomicBoolean hasNotified = new AtomicBoolean(false);
+    //是否停止，true表示停止
     protected volatile boolean stopped = false;
     protected boolean isDaemon = false;
 

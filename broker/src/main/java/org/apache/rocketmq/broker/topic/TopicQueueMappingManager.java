@@ -43,6 +43,9 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import static org.apache.rocketmq.remoting.protocol.RemotingCommand.buildErrorResponse;
 
+/**
+ * topic与队列映射管理器
+ */
 public class TopicQueueMappingManager extends ConfigManager {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.BROKER_LOGGER_NAME);
     private static final long LOCK_TIMEOUT_MILLIS = 3000;
@@ -117,7 +120,7 @@ public class TopicQueueMappingManager extends ConfigManager {
             }
             topicQueueMappingTable.put(newDetail.getTopic(), newDetail);
             updated = true;
-        }  finally {
+        } finally {
             if (locked) {
                 this.lock.unlock();
             }
@@ -161,7 +164,7 @@ public class TopicQueueMappingManager extends ConfigManager {
     @Override
     public String configFilePath() {
         return BrokerPathConfigHelper.getTopicQueueMappingPath(this.brokerController.getMessageStoreConfig()
-            .getStorePathRootDir());
+                .getStorePathRootDir());
     }
 
     @Override
@@ -196,7 +199,7 @@ public class TopicQueueMappingManager extends ConfigManager {
         }
         String topic = requestHeader.getTopic();
         Integer globalId = null;
-        if (requestHeader instanceof  TopicQueueRequestHeader) {
+        if (requestHeader instanceof TopicQueueRequestHeader) {
             globalId = ((TopicQueueRequestHeader) requestHeader).getQueueId();
         }
 
@@ -226,7 +229,7 @@ public class TopicQueueMappingManager extends ConfigManager {
             }
         }
         if (globalId < 0) {
-            return new TopicQueueMappingContext(topic, globalId,  mappingDetail, null, null);
+            return new TopicQueueMappingContext(topic, globalId, mappingDetail, null, null);
         }
 
         List<LogicQueueMappingItem> mappingItemList = TopicQueueMappingDetail.getMappingInfo(mappingDetail, globalId);
@@ -239,7 +242,7 @@ public class TopicQueueMappingManager extends ConfigManager {
     }
 
 
-    public  RemotingCommand rewriteRequestForStaticTopic(TopicQueueRequestHeader requestHeader, TopicQueueMappingContext mappingContext) {
+    public RemotingCommand rewriteRequestForStaticTopic(TopicQueueRequestHeader requestHeader, TopicQueueMappingContext mappingContext) {
         try {
             if (mappingContext.getMappingDetail() == null) {
                 return null;

@@ -17,6 +17,7 @@
 package org.apache.rocketmq.client.consumer;
 
 /**
+ * 异步消息拉取接口
  * Async message pulling interface
  */
 public interface PullCallback {

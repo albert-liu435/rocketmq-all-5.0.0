@@ -18,6 +18,9 @@ package org.apache.rocketmq.client.impl.consumer;
 
 import org.apache.rocketmq.common.message.MessageRequestMode;
 
+/**
+ * 消息请求
+ */
 public interface MessageRequest {
     MessageRequestMode getMessageRequestMode();
 }
