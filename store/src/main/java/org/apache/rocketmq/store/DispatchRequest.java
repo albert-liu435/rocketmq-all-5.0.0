@@ -19,19 +19,40 @@ package org.apache.rocketmq.store;
 import java.util.Map;
 
 public class DispatchRequest {
+
+    //1）String topic：消息主题名
     private final String topic;
+    //2）int queueId：消息队列ID。
     private final int queueId;
+    //3）long commitLogOffset：消息物理偏移量。
     private final long commitLogOffset;
+    //4）int msgSize：消息长度。
     private int msgSize;
+    //5）long tagsCode：消息过滤tag哈希码。
     private final long tagsCode;
+    //6）long storeTimestamp：消息存储时间戳。
     private final long storeTimestamp;
+    //7）long consumeQueueOffset：消息队列偏移量。
     private final long consumeQueueOffset;
+    //8）String keys：消息索引key。多个索引key用空格隔开，例如
+    //key1 key2。
     private final String keys;
+    //9）boolean success：是否成功解析到完整的消息。
     private final boolean success;
+    //10）String uniqKey：消息唯一键。
     private final String uniqKey;
 
+    //11）int sysFlag：消息系统标记。
     private final int sysFlag;
+    //12）long preparedTransactionOffset：消息预处理事务偏移
+    //量。
     private final long preparedTransactionOffset;
+    //13）Map propertiesMap：消息属性。
+    //14）byte bitMap[]：位图。11）int sysFlag：消息系统标记。
+    //12）long preparedTransactionOffset：消息预处理事务偏移
+    //量。
+    //13）Map propertiesMap：消息属性。
+    //14）byte bitMap[]：位图。
     private final Map<String, String> propertiesMap;
     private byte[] bitMap;
 

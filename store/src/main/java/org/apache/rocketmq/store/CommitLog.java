@@ -69,6 +69,23 @@ import org.apache.rocketmq.common.attribute.CQType;
  * 链接：https://www.jianshu.com/p/82521a464424
  * 来源：简书
  * 著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。
+ * <p>
+ * <p>
+ * RocketMQ的存储与读写是基于JDK NIO的内存映射机制
+ * （MappedByteBuffer）的，消息存储时首先将消息追加到内存中，再
+ * 根据配置的刷盘策略在不同时间刷盘。如果是同步刷盘，消息追加到
+ * 内存后，将同步调用MappedByteBuffer的force()方法；如果是异步刷
+ * 盘，在消息追加到内存后会立刻返回给消息发送端。RocketMQ使用一
+ * 个单独的线程按照某一个设定的频率执行刷盘操作。通过在broker配
+ * 置文件中配置flushDiskType来设定刷盘方式，可选值为
+ * ASYNC_FLUSH（异步刷盘）、SYNC_FLUSH（同步刷盘），默认为异步刷
+ * 盘。本节以CommitLog文件刷盘机制为例来剖析RocketMQ的刷盘机制，
+ * ConsumeQueue文件、Index文件刷盘的实现原理与CommitLog刷盘机制
+ * 类似。RocketMQ处理刷盘的实现方法为
+ * Commitlog#handleDiskFlush()，刷盘流程作为消息发送、消息存储的
+ * 子流程，我们先重点了解消息存储流程的相关知识。值得注意的是，
+ * Index文件的刷盘并不是采取定时刷盘机制，而是每更新一次Index文
+ * 件就会将上一次的改动写入磁盘。
  */
 public class CommitLog implements Swappable {
     // Message's MAGIC CODE daa320a7
@@ -297,9 +314,34 @@ public class CommitLog implements Swappable {
     }
 
     /**
+     * Broker正常停止文件恢复的实现为CommitLog#recoverNormally
      * When the normal exit, data recovery, all memory data have been flush
      */
     public void recoverNormally(long maxPhyOffsetOfConsumeQueue) {
+        //第一步：Broker正常停止再重启时，从倒数第3个文件开始恢复，
+        //如果不足3个文件，则从第一个文件开始恢复。checkCRCOnRecover参数用于在进行文件恢复时查找消息是否验证CRC
+        //第二步：解释一下两个局部变量，mappedFileOffset为当前文件
+        //已校验通过的物理偏移量，processOffset为CommitLog文件已确认的
+        //物理偏移量，等于mappedFile.getFileFromOffset加上
+        //mappedFileOffset，
+        //第三步：遍历CommitLog文件，每次取出一条消息，如果查找结果
+        //为true并且消息的长度大于0，表示消息正确，mappedFileOffset指针
+        //向前移动本条消息的长度。如果查找结果为true并且消息的长度等于
+        //0，表示已到该文件的末尾，如果还有下一个文件，则重置
+        //processOffset、mappedFileOffset并重复上述步骤，否则跳出循环；
+        //如果查找结果为false，表明该文件未填满所有消息，则跳出循环，结
+        //束遍历文件
+        //第四步：更新MappedFileQueue的flushedWhere和
+        //committedPosition指针
+        //第五步：删除offset之后的所有文件。遍历目录下的文件，如果
+        //文件的尾部偏移量小于offset则跳过该文件，如果尾部的偏移量大于
+        //offset，则进一步比较offset与文件的开始偏移量。如果offset大于
+        //文件的起始偏移量，说明当前文件包含了有效偏移量，设置
+        //MappedFile的flushedPosition和committedPosition。如果offset小
+        //于文件的起始偏移量，说明该文件是有效文件后面创建的，则调用
+        //MappedFile#destory方法释放MappedFile占用的内存资源（内存映射
+        //与内存通道等），然后加入待删除文件列表中，最终调用
+        //deleteExpiredFile将文件从物理磁盘上删除
         boolean checkCRCOnRecover = this.defaultMessageStore.getMessageStoreConfig().isCheckCRCOnRecover();
         boolean checkDupInfo = this.defaultMessageStore.getMessageStoreConfig().isDuplicationEnable();
         final List<MappedFile> mappedFiles = this.mappedFileQueue.getMappedFiles();
@@ -313,6 +355,7 @@ public class CommitLog implements Swappable {
             MappedFile mappedFile = mappedFiles.get(index);
             ByteBuffer byteBuffer = mappedFile.sliceByteBuffer();
             long processOffset = mappedFile.getFileFromOffset();
+
             long mappedFileOffset = 0;
             long lastValidMsgPhyOffset = this.getConfirmOffset();
             // normal recover doesn't require dispatching
@@ -643,6 +686,16 @@ public class CommitLog implements Swappable {
         return -1;
     }
 
+    /**
+     * Broker异常停止文件恢复的实现为
+     * CommitLog#recoverAbnormally。异常文件恢复与正常停止文件恢复的
+     * 步骤基本相同，主要差别有两个：首先，Broker正常停止默认从倒数
+     * 第三个文件开始恢复，而异常停止则需要从最后一个文件倒序推进，
+     * 找到第一个消息存储正常的文件；其次，如果CommitLog目录没有消息
+     * 文件，在ConsuneQueue目录下存在的文件则需要销毁。
+     *
+     * @param maxPhyOffsetOfConsumeQueue
+     */
     @Deprecated
     public void recoverAbnormally(long maxPhyOffsetOfConsumeQueue) {
         // recover by the minimum time stamp
@@ -760,6 +813,40 @@ public class CommitLog implements Swappable {
         this.getMessageStore().onCommitLogAppend(msg, result, commitLogFile);
     }
 
+    /**
+     * 第一步：判断文件的魔数，如果不是MESSAGE_MAGIC_CODE，则返
+     * 回false，表示该文件不符合CommitLog文件的存储格式
+     * 第二步：如果文件中第一条消息的存储时间等于0，则返回
+     * false，说明该消息的存储文件中未存储任何消息
+     * 第三步：对比文件第一条消息的时间戳与检测点。如果文件第一
+     * 条消息的时间戳小于文件检测点，说明该文件的部分消息是可靠的，
+     * 则从该文件开始恢复。checkpoint文件中保存了CommitLog、
+     * ConsumeQueue、Index的文件刷盘点，RocketMQ默认选择CommitLog文
+     * 件与ConsumeQueue这两个文件的刷盘点中较小值与CommitLog文件第一
+     * 条消息的时间戳做对比，如果messageIndexEnable为true，表示Index
+     * 文件的刷盘时间点也参与计算。
+     * 第四步：如果根据前3步算法找到MappedFile，则遍历MappedFile
+     * 中的消息，验证消息的合法性，并将消息重新转发到ConsumeQueue与
+     * Index文件
+     * 第五步：如果未找到有效的MappedFile，则设置CommitLog目录的
+     * flushedWhere、committedWhere指针都为0，并销毁ConsumeQueue文
+     * 件
+     * <p>
+     * 重置ConsumeQueue的maxPhysicOffset与minLogicOffset，然后调
+     * 用MappedFileQueue的destory()方法将ConsumeQuene目录下的文件全
+     * 部删除。
+     * 存储启动时所谓的文件恢复主要完成flushedPosition、
+     * committedWhere指针的设置、将消息消费队列最大偏移量加载到内
+     * 存，并删除flushedPosition之后所有的文件。如果Broker异常停止，
+     * 在文件恢复过程中，RocketMQ会将最后一个有效文件中的所有消息重
+     * 新转发到ConsumeQueue和Index文件中，确保不丢失消息，但同时会带
+     * 来消息重复的问题。纵观RocktMQ的整体设计思想，RocketMQ保证消息
+     * 不丢失但不保证消息不会重复消费，故消息消费业务方需要实现消息
+     * 消费的幂等设计。
+     *
+     * @param mappedFile
+     * @return
+     */
     private boolean isMappedFileMatchedRecover(final MappedFile mappedFile) {
         ByteBuffer byteBuffer = mappedFile.sliceByteBuffer();
 
@@ -1206,6 +1293,21 @@ public class CommitLog implements Swappable {
         });
     }
 
+    /**
+     * 同步刷盘指的是在消息追加到内存映射文件的内存中后，立即将
+     * 数据从内存写入磁盘文件，由CommitLog的handleDiskFlush方法实
+     * 现
+     * <p>
+     * 同步刷盘实现流程如下。
+     * 1）构建GroupCommitRequest同步任务并提交到
+     * GroupCommitRequest。
+     * 2）等待同步刷盘任务完成，如果超时则返回刷盘错误，刷盘成功
+     * 后正常返回给调用方。
+     *
+     * @param result
+     * @param messageExt
+     * @return
+     */
     private CompletableFuture<PutMessageStatus> handleDiskFlush(AppendMessageResult result, MessageExt messageExt) {
         return this.flushManager.handleDiskFlush(result, messageExt);
     }
@@ -1248,6 +1350,13 @@ public class CommitLog implements Swappable {
         return -1;
     }
 
+    /**
+     * 获取当前CommitLog目录的最小偏移量，首先获取目录下的第一个
+     * 文件，如果该文件可用，则返回该文件的起始偏移量，否则返回下一
+     * 个文件的起始偏移量
+     *
+     * @return
+     */
     public long getMinOffset() {
         MappedFile mappedFile = this.mappedFileQueue.getFirstMappedFile();
         if (mappedFile != null) {
@@ -1261,6 +1370,17 @@ public class CommitLog implements Swappable {
         return -1;
     }
 
+    /**
+     * 根据偏移量与消息长度查找消息。首先根据偏移找到文件所在的
+     * 物理偏移量，然后用offset与文件长度取余，得到在文件内的偏移
+     * 量，从该偏移量读取size长度的内容并返回。如果只根据消息偏移量
+     * 查找消息，则首先找到文件内的偏移量，然后尝试读取4字节，获取消
+     * 息的实际长度，最后读取指定字节。
+     *
+     * @param offset
+     * @param size
+     * @return
+     */
     public SelectMappedBufferResult getMessage(final long offset, final int size) {
         int mappedFileSize = this.defaultMessageStore.getMessageStoreConfig().getMappedFileSizeCommitLog();
         MappedFile mappedFile = this.mappedFileQueue.findMappedFileByOffset(offset, offset == 0);
@@ -1271,6 +1391,13 @@ public class CommitLog implements Swappable {
         return null;
     }
 
+    /**
+     * 根据offset返回下一个文件的起始偏移量。获取一个文件的大
+     * 小，减去offset % mapped-FileSize，回到下一文件的起始偏移量
+     *
+     * @param offset
+     * @return
+     */
     public long rollNextFile(final long offset) {
         int mappedFileSize = this.defaultMessageStore.getMessageStoreConfig().getMappedFileSizeCommitLog();
         return offset + mappedFileSize - offset % mappedFileSize;
@@ -1347,6 +1474,24 @@ public class CommitLog implements Swappable {
         protected static final int RETRY_TIMES_OVER = 10;
     }
 
+    /**
+     * 1）commitIntervalCommitLog：CommitRealTimeService线程间隔
+     * 时间，默认200ms。
+     * 2）commitLogLeastPages：一次提交任务至少包含的页数，如果
+     * 待提交数据不足，小于该参数配置的值，将忽略本次提交任务，默认4
+     * 页。
+     * 3）commitDataThoroughInterval：两次真实提交的最大间隔时
+     * 间，默认200ms。
+     * <p>
+     * 第二步：如果距上次提交间隔超过
+     * commitDataThoroughInterval，则本次提交忽略commitLogLeastPages
+     * 参数，也就是如果待提交数据小于指定页数，也执行提交操作
+     * <p>
+     * 第三步：执行提交操作，将待提交数据提交到物理文件的内存映
+     * 射内存区，如果返回false，并不代表提交失败，而是表示有数据提交
+     * 成功了，唤醒刷盘线程执行刷盘操作。该线程每完成一次提交动作，
+     * 将等待200ms再继续执行下一次提交任务
+     */
     class CommitRealTimeService extends FlushCommitLogService {
 
         private long lastCommitTimestamp = 0;
@@ -1402,6 +1547,36 @@ public class CommitLog implements Swappable {
         }
     }
 
+    /**
+     * FlushRealTimeService刷盘线程工作流程
+     *
+     * 第一步：如代码清单4-86所示，先解释4个配置参数的含义。
+     * 1）flushCommitLogTimed：默认为false，表示使用await方法等
+     * 待；如果为true，表示使用Thread.sleep方法等待。
+     * 2）flushIntervalCommitLog：FlushRealTimeService线程任务运
+     * 行间隔时间。
+     * flushPhysicQueueLeastPages：一次刷盘任务至少包含页数，如
+     * 果待写入数据不足，小于该参数配置的值，将忽略本次刷盘任务，默
+     * 认4页。
+     * 3）flushPhysicQueueThoroughInterval：两次真实刷盘任务的最
+     * 大间隔时间，默认10s。
+     *
+     * 第二步：如果距上次提交数据的间隔时间超过
+     * flushPhysicQueueThoroughInterval，则本次刷盘任务将忽略
+     * flushPhysicQueueLeastPages，也就是如果待写入数据小于指定页
+     * 数，也执行刷盘操作
+     *
+     * 第三步：执行一次刷盘任务前先等待指定时间间隔，然后执行刷
+     * 盘任务
+     *
+     * 第四步：调用flush方法将内存中的数据写入磁盘，并且更新
+     * checkpoint文件的CommitLog文件更新时间戳，checkpoint文件的刷盘
+     * 动作在刷盘ConsumeQueue线程中执行，其入口为
+     * DefaultMessageStore#FlushConsumeQueueService。ConsumeQueue、
+     * Index文件的刷盘实现原理与CommitLog文件的刷盘机制类似，本书不
+     * 再单独分析。
+     *
+     */
     class FlushRealTimeService extends FlushCommitLogService {
         private long lastFlushTimestamp = 0;
         private long printTimes = 0;
@@ -1489,8 +1664,10 @@ public class CommitLog implements Swappable {
     }
 
     public static class GroupCommitRequest {
+        //刷盘点偏移量
         private final long nextOffset;
         // Indicate the GroupCommitRequest result: true or false
+        //刷盘结果，初始为false
         private final CompletableFuture<PutMessageStatus> flushOKFuture = new CompletableFuture<>();
         private volatile int ackNums = 1;
         private final long deadLine;
@@ -1530,7 +1707,11 @@ public class CommitLog implements Swappable {
      * GroupCommit Service
      */
     class GroupCommitService extends FlushCommitLogService {
+        //：同步刷盘任务暂存容器
         private volatile LinkedList<GroupCommitRequest> requestsWrite = new LinkedList<GroupCommitRequest>();
+        //GroupCommitService
+        //线程每次处理的request容器，这是一个设计亮点，避免了任务提交与
+        //任务执行的锁冲突
         private volatile LinkedList<GroupCommitRequest> requestsRead = new LinkedList<GroupCommitRequest>();
         private final PutMessageSpinLock lock = new PutMessageSpinLock();
 
@@ -1555,6 +1736,22 @@ public class CommitLog implements Swappable {
             }
         }
 
+        /**
+         * 1）执行刷盘操作，即调用MappedByteBuffer#force方法。遍历同
+         * 步刷盘任务列表，根据加入顺序逐一执行刷盘逻辑。
+         * 2）调用mappedFileQueue#flush方法执行刷盘操作，最终会调用
+         * MappedByteBuffer #force()方法，其具体实现已在4.4节做了详细说
+         * 明。如果已刷盘指针大于、等于提交的刷盘点，表示刷盘成功，每执
+         * 行一次刷盘操作后，立即调用GroupCommitRequest#wakeupCustomer唤
+         * 醒消息发送线程并通知刷盘结果。
+         * 3）处理完所有同步刷盘任务后，更新刷盘检测点
+         * StoreCheckpoint中的physicMsg Timestamp，但并没有执行检测点的
+         * 刷盘操作，刷盘检测点的刷盘操作将在刷写消息队列文件时触发。
+         * 同步刷盘的简单描述是，消息生产者在消息服务端将消息内容追
+         * 加到内存映射文件中（内存）后，需要同步将内存的内容立刻写入磁
+         * 盘。通过调用内存映射文件（MappedByteBuffer的force方法）可将内
+         * 存中的数据写入磁盘。
+         */
         private void doCommit() {
             if (!this.requestsRead.isEmpty()) {
                 for (GroupCommitRequest req : this.requestsRead) {
@@ -2227,6 +2424,33 @@ public class CommitLog implements Swappable {
             }
         }
 
+        /**
+         * 开启transientStorePoolEnable机制则启动异步刷盘方式，刷盘
+         * 实现较同步刷盘有细微差别。如果transientStorePoolEnable为
+         * true，RocketMQ会单独申请一个与目标物理文件（CommitLog）同样大
+         * 小的堆外内存，该堆外内存将使用内存锁定，确保不会被置换到虚拟
+         * 内存中去，消息首先追加到堆外内存，然后提交到与物理文件的内存
+         * 映射中，再经flush操作到磁盘。如果transientStorePoolEnable为
+         * false，消息将追加到与物理文件直接映射的内存中，然后写入磁盘。
+         * transientStorePoolEnable为true的刷盘流程
+         * <p>
+         * 1）将消息直接追加到ByteBuffer（堆外内存
+         * DirectByteBuffer），wrotePosition随着消息的不断追加向后移动。
+         * 2）CommitRealTimeService线程默认每200ms将ByteBuffer新追加
+         * （wrotePosition减去commitedPosition）的数据提交到FileChannel
+         * 中。
+         * 3）FileChannel在通道中追加提交的内容，其wrotePosition指针
+         * 向前后移动，然后返回。
+         * 4）commit操作成功返回，将commitedPosition向前后移动本次提
+         * 交的内容长度，此时wrotePosition指针依然可以向前推进。
+         * 5）FlushRealTimeService线程默认每500ms将FileChannel中新追
+         * 加的内存（wrotePosition减去上一次写入位置flushedPositiont），
+         * 通过调用FileChannel#force()方法将数据写入磁盘。
+         *
+         * @param result
+         * @param putMessageResult
+         * @param messageExt
+         */
         public void handleDiskFlush(AppendMessageResult result, PutMessageResult putMessageResult,
                                     MessageExt messageExt) {
             // Synchronization flush

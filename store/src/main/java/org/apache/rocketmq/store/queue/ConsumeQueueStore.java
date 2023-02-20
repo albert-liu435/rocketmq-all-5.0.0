@@ -95,6 +95,14 @@ public class ConsumeQueueStore {
         consumeQueue.putMessagePositionInfoWrapper(request);
     }
 
+    /**
+     * 第一步：根据消息主题与队列ID，先获取对应的ConsumeQueue文
+     * 件，其逻辑比较简单，因为每一个消息主题对应一个ConsumeQueue目
+     * 录，主题下每一个消息队列对应一个文件夹，所以取出该文件夹最后
+     * 的ConsumeQueue文件即可
+     *
+     * @param dispatchRequest
+     */
     public void putMessagePositionInfoWrapper(DispatchRequest dispatchRequest) {
         ConsumeQueueInterface cq = this.findOrCreateConsumeQueue(dispatchRequest.getTopic(), dispatchRequest.getQueueId());
         this.putMessagePositionInfoWrapper(cq, dispatchRequest);
@@ -345,6 +353,13 @@ public class ConsumeQueueStore {
         }
     }
 
+    /**
+     * 第八步：恢复ConsumeQueue文件后，将在CommitLog实例中保存每
+     * 个消息消费队列当前的存储逻辑偏移量，这也是消息中不仅存储主
+     * 题、消息队列ID还存储了消息队列偏移量的关键所在
+     *
+     * @param minPhyOffset
+     */
     public void recoverOffsetTable(long minPhyOffset) {
         ConcurrentMap<String, Long> cqOffsetTable = new ConcurrentHashMap<>(1024);
         ConcurrentMap<String, Long> bcqOffsetTable = new ConcurrentHashMap<>(1024);

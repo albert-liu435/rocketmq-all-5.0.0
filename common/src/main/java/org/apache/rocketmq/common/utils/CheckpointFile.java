@@ -24,11 +24,16 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
+
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.rocketmq.common.MixAll;
 import org.apache.rocketmq.common.UtilAll;
 
 /**
+ * checkpoint（检查点）文件的作用是记录ComitLog、
+ * ConsumeQueue、Index文件的刷盘时间点，文件固定长度为4KB，其中
+ * 只用该文件的前面24字节
+ *
  * Entry Checkpoint file util
  * Format:
  * <li>First line:  Entries size
@@ -90,7 +95,7 @@ public class CheckpointFile<T> {
             int crc32 = UtilAll.crc32(entryContent.toString().getBytes(StandardCharsets.UTF_8));
 
             String content = entries.size() + System.lineSeparator() +
-                crc32 + System.lineSeparator() + entryContent;
+                    crc32 + System.lineSeparator() + entryContent;
             MixAll.string2File(content, this.filePath);
         }
     }
@@ -124,13 +129,13 @@ public class CheckpointFile<T> {
 
                 if (result.size() != expectedLines) {
                     final String err = String.format(
-                        "Expect %d entries, only found %d entries", expectedLines, result.size());
+                            "Expect %d entries, only found %d entries", expectedLines, result.size());
                     throw new IOException(err);
                 }
 
                 if (NOT_CHECK_CRC_MAGIC_CODE != expectedCrc32 && truthCrc32 != expectedCrc32) {
                     final String err = String.format(
-                        "Entries crc32 not match, file=%s, truth=%s", expectedCrc32, truthCrc32);
+                            "Entries crc32 not match, file=%s, truth=%s", expectedCrc32, truthCrc32);
                     throw new IOException(err);
                 }
                 return result;

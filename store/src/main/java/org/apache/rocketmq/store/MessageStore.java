@@ -56,6 +56,7 @@ public interface MessageStore {
     boolean load();
 
     /**
+     * 启动消息存储
      * Launch this message store.
      *
      * @throws Exception if there is any error.
