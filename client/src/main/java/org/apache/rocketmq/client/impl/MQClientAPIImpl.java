@@ -833,6 +833,19 @@ public class MQClientAPIImpl implements NameServerUpdateCallback {
         return sendResult;
     }
 
+    /**
+     * 调用接口拉取消息
+     *
+     * @param addr
+     * @param requestHeader
+     * @param timeoutMillis
+     * @param communicationMode
+     * @param pullCallback
+     * @return
+     * @throws RemotingException
+     * @throws MQBrokerException
+     * @throws InterruptedException
+     */
     public PullResult pullMessage(
             final String addr,
             final PullMessageRequestHeader requestHeader,

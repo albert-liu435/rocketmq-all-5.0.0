@@ -43,6 +43,9 @@ import org.apache.rocketmq.logging.InternalLogger;
 public class PullMessageService extends ServiceThread {
     private final InternalLogger log = ClientLogger.getLog();
     //消息请求阻塞队列
+    //原来，PullMessageService提供了延迟添加与立即添加两种方式
+    //将PullRequest放入pullRequestQueue。那么PullRequest是在什么时
+    //候创建的呢？executePullRequestImmediately方法调用
     private final LinkedBlockingQueue<MessageRequest> messageRequestQueue = new LinkedBlockingQueue<MessageRequest>();
 
     private final MQClientInstance mQClientFactory;
@@ -71,6 +74,16 @@ public class PullMessageService extends ServiceThread {
         }
     }
 
+    /**
+     * 通过跟踪发现，主要有两个地方会调用
+     * executePullRequestImmediately：一个是在RocketMQ根据
+     * PullRequest拉取任务执行完一次消息拉取任务后，又将PullRequest
+     * 对象放入pullRequestQueue；另一个是在RebalanceImpl中创建的。
+     * RebalanceImpl是5.5节要重点介绍的消息队列负载机制，也就是
+     * PullRequest对象真正创建的地方。
+     *
+     * @param pullRequest
+     */
     public void executePullRequestImmediately(final PullRequest pullRequest) {
         try {
             this.messageRequestQueue.put(pullRequest);
@@ -114,6 +127,18 @@ public class PullMessageService extends ServiceThread {
 
     /**
      * 消息拉取
+     * 根据消费组名从MQClientInstance中获取消费者的内部实现类
+     * MQConsumerInner，令人意外的是，这里将consumer强制转换为
+     * DefaultMQPushConsumerImpl，也就是PullMessageService，该线程只
+     * 为推模式服务，那拉模式如何拉取消息呢？其实细想也不难理解，对
+     * 于拉模式，RocketMQ只需要提供拉取消息API，再由应用程序调用
+     * API。
+     *
+     * ProcessQueue是MessageQueue在消费端的重现、快照。
+     * PullMessageService从消息服务器默认每次拉取32条消息，按消息队
+     * 列偏移量的顺序存放在ProcessQueue中，PullMessageService将消息
+     * 提交到消费者消费线程池，消息成功消费后，再从ProcessQueue中移
+     * 除。
      *
      * @param pullRequest
      */
@@ -138,13 +163,21 @@ public class PullMessageService extends ServiceThread {
         }
     }
 
+    /**
+     * PullMessageService消息拉取服务线程，run()方法是其核心逻辑
+     */
     @Override
     public void run() {
         log.info(this.getServiceName() + " service started");
-
+        //1）while(!this.isStopped())是一种通用的设计技巧，Stopped
+        //声明为volatile，每执行一次业务逻辑，检测一下其运行状态，可以
+        //通过其他线程将Stopped设置为true，从而停止该线程。
         while (!this.isStopped()) {
             try {
                 //从阻塞队列中获取一个任务
+                //从pullRequestQueue中获取一个PullRequest消息拉取任务，
+                //如果pullRequestQueue为空，则线程将阻塞，直到有拉取任务被放
+                //入。
                 MessageRequest messageRequest = this.messageRequestQueue.take();
                 if (messageRequest.getMessageRequestMode() == MessageRequestMode.POP) {
                     this.popMessage((PopRequest) messageRequest);

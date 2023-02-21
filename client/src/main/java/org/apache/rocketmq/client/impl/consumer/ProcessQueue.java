@@ -38,16 +38,67 @@ import org.apache.rocketmq.common.message.MessageExt;
 import org.apache.rocketmq.common.protocol.body.ProcessQueueInfo;
 
 /**
+ * ProcessQueue是MessageQueue在消费端的重现、快照。
+ * PullMessageService从消息服务器默认每次拉取32条消息，按消息队
+ * 列偏移量的顺序存放在ProcessQueue中，PullMessageService将消息
+ * 提交到消费者消费线程池，消息成功消费后，再从ProcessQueue中移
+ * 除。
+ * <p>
+ * 1）public boolean isLockExpired()：判断锁是否过期，锁超时
+ * 时间默认为30s，通过系统参数rocketmq.client.
+ * rebalance.lockMaxLiveTime进行设置。
+ * 2）public boolean isPullExpired()：判断PullMessageService
+ * 是否空闲，空闲时间默认120s，通过系统参数rocketmq.client.
+ * pull.pullMaxIdleTime进行设置。
+ * 3）public void cleanExpiredMsg(DefaultMQPushConsumer
+ * pushConsumer)：移除消费超时的消息，默认超过15min未消费的消息
+ * 将延迟3个延迟级别再消费。
+ * 4）public boolean putMessage(final List msgs)：添加消息，
+ * PullMessageService拉取消息后，调用该方法将消息添加到
+ * ProcessQueue。
+ * 5）public long getMaxSpan()：获取当前消息的最大间隔。
+ * getMaxSpan()并不能说明ProceQueue包含的消息个数，但是能说明当
+ * 前处理队列中第一条消息与最后一条消息的偏移量已经超过的消息个
+ * 数。
+ * 6）public long removeMessage(final List<MessageExt>
+ * msgs)：移除消息。
+ * <p>
+ * 7）public void rollback()：将msgTreeMapTmp中的所有消息重
+ * 新放入msgTreeMap并清除msgTreeMapTmp。
+ * 8）public long commit()：将msgTreeMapTmp中的消息清除，表
+ * 示成功处理该批消息。
+ * 9）public void makeMessageToCosumeAgain(List msgs)：重新
+ * 消费该批消息。
+ * 10）public List takeMessags(final int batchSize)：从
+ * ProcessQueue中取出batchSize条消息。
+ * <p>
+ * <p>
+ * <p>
+ * <p>
+ * <p>
+ * <p>
+ * <p>
  * Queue consumption snapshot
  */
 public class ProcessQueue {
+
+    //4）TreeMap msgTreeMapTemp：消息临时存储容器，键为消息在
+    //ConsumeQueue中的偏移量。该结构用于处理顺序消息，消息消费线程
+    //从ProcessQueue的msgTreeMap中取出消息前，先将消息临时存储在
+    //msgTreeMapTemp中。
+
     public final static long REBALANCE_LOCK_MAX_LIVE_TIME =
-        Long.parseLong(System.getProperty("rocketmq.client.rebalance.lockMaxLiveTime", "30000"));
+            Long.parseLong(System.getProperty("rocketmq.client.rebalance.lockMaxLiveTime", "30000"));
     public final static long REBALANCE_LOCK_INTERVAL = Long.parseLong(System.getProperty("rocketmq.client.rebalance.lockInterval", "20000"));
     private final static long PULL_MAX_IDLE_TIME = Long.parseLong(System.getProperty("rocketmq.client.pull.pullMaxIdleTime", "120000"));
     private final InternalLogger log = ClientLogger.getLog();
+    //读写锁，控制多线程并发修改
+    //msgTreeMap、msgTree MapTemp。
     private final ReadWriteLock treeMapLock = new ReentrantReadWriteLock();
+    //消息存储容器，键为消息在
+    //ConsumeQueue中的偏移量。
     private final TreeMap<Long, MessageExt> msgTreeMap = new TreeMap<Long, MessageExt>();
+    //ProcessQueue中总消息数。
     private final AtomicLong msgCount = new AtomicLong();
     private final AtomicLong msgSize = new AtomicLong();
     private final Lock consumeLock = new ReentrantLock();
@@ -56,9 +107,17 @@ public class ProcessQueue {
      */
     private final TreeMap<Long, MessageExt> consumingMsgOrderlyTreeMap = new TreeMap<Long, MessageExt>();
     private final AtomicLong tryUnlockTimes = new AtomicLong(0);
+    //当前ProcessQueue中包含的
+    //最大队列偏移量。
     private volatile long queueOffsetMax = 0L;
+    //当前ProccesQueue是否
+    //被丢弃。
     private volatile boolean dropped = false;
+    //上一次开始拉取消息的
+    //时间戳。
     private volatile long lastPullTimestamp = System.currentTimeMillis();
+    //上一次消费消息的时
+    //间戳。
     private volatile long lastConsumeTimestamp = System.currentTimeMillis();
     private volatile boolean locked = false;
     private volatile long lastLockTimestamp = System.currentTimeMillis();

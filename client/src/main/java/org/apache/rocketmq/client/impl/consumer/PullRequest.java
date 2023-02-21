@@ -23,10 +23,17 @@ import org.apache.rocketmq.common.message.MessageRequestMode;
  * 拉取消息请求体
  */
 public class PullRequest implements MessageRequest {
+    //消费者组
     private String consumerGroup;
+    //带拉取消费队列
     private MessageQueue messageQueue;
+    //消息处理队列，从Broker中拉
+    //取到的消息会先存入ProccessQueue，然后再提交到消费者消费线程池
+    //进行消费。
     private ProcessQueue processQueue;
+    //待拉取的MessageQueue偏移量
     private long nextOffset;
+    //是否被锁定
     private boolean previouslyLocked = false;
 
     public boolean isPreviouslyLocked() {

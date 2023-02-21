@@ -98,6 +98,13 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
     private MessageModel messageModel = MessageModel.CLUSTERING;
 
     /**
+     * 第一次消费时指定消
+     * 费策略
+     * <p>
+     * 注意：如果从消息进度服务OffsetStore读取到MessageQueue中的
+     * 偏移量不小于0，则使用读取到的偏移量拉取消息，只有在读到的偏移
+     * 量小于0时，上述策略才会生效。
+     * <p>
      * Consuming point on consumer booting.
      * </p>
      * <p>
@@ -139,31 +146,39 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
     private String consumeTimestamp = UtilAll.timeMillisToHumanString3(System.currentTimeMillis() - (1000 * 60 * 30));
 
     /**
+     * 集群模式下消息队列的负载
+     * 策略。
      * Queue allocation algorithm specifying how message queues are allocated to each consumer clients.
      */
     private AllocateMessageQueueStrategy allocateMessageQueueStrategy;
 
     /**
+     * 订阅信息
      * Subscription relationship
      */
     private Map<String /* topic */, String /* sub expression */> subscription = new HashMap<String, String>();
 
     /**
+     * 消息业务监听器
      * Message listener
      */
     private MessageListener messageListener;
 
     /**
+     * 消息消费进度存储器。
      * Offset Storage
      */
     private OffsetStore offsetStore;
 
     /**
+     * 消费者最小线程数。
      * Minimum consumer thread number
      */
     private int consumeThreadMin = 20;
 
     /**
+     * 消费者最大线程数，因为消费
+     * 者线程池使用无界队列，所以此参数不生效。
      * Max consumer thread number
      */
     private int consumeThreadMax = 20;
@@ -174,11 +189,16 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
     private long adjustThreadPoolNumsThreshold = 100000;
 
     /**
+     * 并发消息消费时处理队
+     * 列最大跨度，默认2000，表示如果消息处理队列中偏移量最大的消息
+     * 与偏移量最小的消息的跨度超过2000，则延迟50ms后再拉取消息。
      * Concurrently max span offset.it has no effect on sequential consumption
      */
     private int consumeConcurrentlyMaxSpan = 2000;
 
     /**
+     * 默认1000，表示每1000
+     * 次流控后打印流控日志。
      * Flow control threshold on queue level, each message queue will cache at most 1000 messages by default,
      * Consider the {@code pullBatchSize}, the instantaneous value may exceed the limit
      */
@@ -222,16 +242,22 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
     private int pullThresholdSizeForTopic = -1;
 
     /**
+     * 推模式下拉取任务的间隔时间，默
+     * 认一次拉取任务完成后继续拉取。
      * Message pull Interval
      */
     private long pullInterval = 0;
 
     /**
+     * 消息并发消费时一次
+     * 消费消息的条数，通俗点说，就是每次传入
+     * MessageListener#consumeMessage中的消息条数。
      * Batch consumption size
      */
     private int consumeMessageBatchMaxSize = 1;
 
     /**
+     * 每次消息拉取的条数，默认32条。
      * Batch pull size
      */
     private int pullBatchSize = 32;
@@ -240,6 +266,8 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
     private int pullBatchSizeInBytes = 256 * 1024;
 
     /**
+     * 是否每次拉取消息都更
+     * 新订阅信息，默认为false。
      * Whether update subscription relationship when every pull
      */
     private boolean postSubscriptionWhenPull = false;
@@ -250,6 +278,9 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
     private boolean unitMode = false;
 
     /**
+     * 最大消费重试次数。如果消息消费
+     * 次数超过maxReconsume Times还未成功，则将该消息转移到一个失败
+     * 队列，等待被删除。
      * Max re-consume times.
      * In concurrently mode, -1 means 16;
      * In orderly mode, -1 means Integer.MAX_VALUE.
@@ -259,11 +290,15 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
     private int maxReconsumeTimes = -1;
 
     /**
+     * 延迟将该队列的消
+     * 息提交到消费者线程的等待时间，默认延迟1s。
      * Suspending pulling time for cases requiring slow pulling like flow-control scenario.
      */
     private long suspendCurrentQueueTimeMillis = 1000;
 
     /**
+     * 消息消费超时时间，默认为15，
+     * 单位为分钟。
      * Maximum amount of time in minutes a message may block the consuming thread.
      */
     private long consumeTimeout = 15;
@@ -731,6 +766,7 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
     }
 
     /**
+     * 这种方法使内部基础设施易于使用。实例必须在配置后调用此方法
      * This method gets internal infrastructure readily to serve. Instances must call this method after configuration.
      *
      * @throws MQClientException if there is any client error.
