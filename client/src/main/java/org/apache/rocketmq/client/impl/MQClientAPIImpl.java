@@ -1012,6 +1012,11 @@ public class MQClientAPIImpl implements NameServerUpdateCallback {
     ) throws RemotingException, InterruptedException {
         //进行接口调用
         this.remotingClient.invokeAsync(addr, request, timeoutMillis, new InvokeCallback() {
+            //NettyRemoting Client在收到
+            //服务端响应结构后，会回调PullCallback的onSuccess或
+            //onException，PullCallBack对象在
+            //DefaultMQPushConsumerImpl#pullMessage中创建
+
             @Override
             public void operationComplete(ResponseFuture responseFuture) {
                 RemotingCommand response = responseFuture.getResponseCommand();

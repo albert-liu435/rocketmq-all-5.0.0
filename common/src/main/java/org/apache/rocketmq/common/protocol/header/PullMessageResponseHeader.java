@@ -30,6 +30,9 @@ import org.apache.rocketmq.remoting.protocol.FastCodesHeader;
 
 import io.netty.buffer.ByteBuf;
 
+/**
+ * 拉取消息响应头信息
+ */
 public class PullMessageResponseHeader implements CommandCustomHeader, FastCodesHeader {
     @CFNotNull
     private Long suggestWhichBrokerId;

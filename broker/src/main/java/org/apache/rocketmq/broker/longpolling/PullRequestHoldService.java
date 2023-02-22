@@ -31,6 +31,7 @@ import org.apache.rocketmq.logging.InternalLoggerFactory;
 import org.apache.rocketmq.store.ConsumeQueueExt;
 
 /**
+ * 每隔5s重试一次。
  * Consumer端使用push的方式拉取请求时，保存请求，当有消息到达时进行推送处理类。对于push方式消费，会对消费端的请求进行保存，当有消息到达的时候然后进行推送
  */
 public class PullRequestHoldService extends ServiceThread {
@@ -45,6 +46,18 @@ public class PullRequestHoldService extends ServiceThread {
         this.brokerController = brokerController;
     }
 
+    /**
+     * 根据消息主题与消息队列构建key，从ConcurrentMap<String/*
+     * topic@queueId ,ManyPullRequest>pullRequestTable中获取该主
+     * 题队列对应的ManyPullRequest，通过ConcurrentMap的并发特性，维
+     * 护主题队列的ManyPullRequest，然后将PullRequest放入
+     * ManyPullRequest。ManyPullRequest对象内部持有一个PullRequest列
+     * 表，表示同一主题队列的累积拉取消息任务
+     *
+     * @param topic
+     * @param queueId
+     * @param pullRequest
+     */
     public void suspendPullRequest(final String topic, final int queueId, final PullRequest pullRequest) {
         String key = this.buildKey(topic, queueId);
         ManyPullRequest mpr = this.pullRequestTable.get(key);

@@ -17,10 +17,15 @@
 package org.apache.rocketmq.client.impl.consumer;
 
 import java.util.List;
+
 import org.apache.rocketmq.common.message.MessageExt;
 import org.apache.rocketmq.common.message.MessageQueue;
 import org.apache.rocketmq.common.protocol.body.ConsumeMessageDirectlyResult;
 
+/**
+ * 拉取消息的核心处理类。
+ * 一共有两种实现，并发消费和顺序消费。
+ */
 public interface ConsumeMessageService {
     void start();
 
@@ -37,13 +42,13 @@ public interface ConsumeMessageService {
     ConsumeMessageDirectlyResult consumeMessageDirectly(final MessageExt msg, final String brokerName);
 
     void submitConsumeRequest(
-        final List<MessageExt> msgs,
-        final ProcessQueue processQueue,
-        final MessageQueue messageQueue,
-        final boolean dispathToConsume);
+            final List<MessageExt> msgs,
+            final ProcessQueue processQueue,
+            final MessageQueue messageQueue,
+            final boolean dispathToConsume);
 
     void submitPopConsumeRequest(
-        final List<MessageExt> msgs,
-        final PopProcessQueue processQueue,
-        final MessageQueue messageQueue);
+            final List<MessageExt> msgs,
+            final PopProcessQueue processQueue,
+            final MessageQueue messageQueue);
 }

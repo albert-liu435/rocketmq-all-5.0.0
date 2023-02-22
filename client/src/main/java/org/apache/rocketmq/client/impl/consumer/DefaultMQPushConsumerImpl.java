@@ -403,21 +403,29 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
                     switch (pullResult.getPullStatus()) {
                         //表示返回的有消息
                         case FOUND:
+                            //封装消息拉取的请求
+
+                            //待拉取的MessageQueue偏移量
                             long prevRequestOffset = pullRequest.getNextOffset();
+                            //下次拉取的开始位置
                             pullRequest.setNextOffset(pullResult.getNextBeginOffset());
+                            //耗时
                             long pullRT = System.currentTimeMillis() - beginTimestamp;
                             DefaultMQPushConsumerImpl.this.getConsumerStatsManager().incPullRT(pullRequest.getConsumerGroup(),
                                     pullRequest.getMessageQueue().getTopic(), pullRT);
 
                             long firstMsgOffset = Long.MAX_VALUE;
+                            //拉取的消息为空或者null
                             if (pullResult.getMsgFoundList() == null || pullResult.getMsgFoundList().isEmpty()) {
+                                //立刻执行消息拉取
                                 DefaultMQPushConsumerImpl.this.executePullRequestImmediately(pullRequest);
                             } else {
+                                //第一个消息的偏移量
                                 firstMsgOffset = pullResult.getMsgFoundList().get(0).getQueueOffset();
 
                                 DefaultMQPushConsumerImpl.this.getConsumerStatsManager().incPullTPS(pullRequest.getConsumerGroup(),
                                         pullRequest.getMessageQueue().getTopic(), pullResult.getMsgFoundList().size());
-
+                                //消息放入待处理的队列中
                                 boolean dispatchToConsume = processQueue.putMessage(pullResult.getMsgFoundList());
                                 DefaultMQPushConsumerImpl.this.consumeMessageService.submitConsumeRequest(
                                         pullResult.getMsgFoundList(),
@@ -425,6 +433,7 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
                                         pullRequest.getMessageQueue(),
                                         dispatchToConsume);
 
+                                //继续执行消息拉取
                                 if (DefaultMQPushConsumerImpl.this.defaultMQPushConsumer.getPullInterval() > 0) {
                                     DefaultMQPushConsumerImpl.this.executePullRequestLater(pullRequest,
                                             DefaultMQPushConsumerImpl.this.defaultMQPushConsumer.getPullInterval());
@@ -443,6 +452,8 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
                             }
 
                             break;
+                            //NO_NEW_MSG对应GetMessageResult.OFFSET_FOUND_NULL、
+                        //GetMessageResult.OFFSET_OVERFLOW_ONE。
                         case NO_NEW_MSG:
                         case NO_MATCHED_MSG:
                             pullRequest.setNextOffset(pullResult.getNextBeginOffset());
@@ -451,6 +462,17 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
 
                             DefaultMQPushConsumerImpl.this.executePullRequestImmediately(pullRequest);
                             break;
+                            //如果拉取结果显示偏移量非法，首先将ProcessQueue的dropped设
+                        //为true，表示丢弃该消费队列，意味着ProcessQueue中拉取的消息将
+                        //停止消费，然后根据服务端下一次校对的偏移量尝试更新消息消费进
+                        //度（内存中），然后尝试持久化消息消费进度，并将该消息队列从
+                        //RebalacnImpl的处理队列中移除，意味着暂停该消息队列的消息拉
+                        //取，等待下一次消息队列重新负载。如代码清单5-27所示，
+                        //OFFSET_ILLEGAL对应服务端GetMessageResult状态的
+                        //NO_MATCHED_LOGIC_QUEUE、NO_MESSAGE_IN_QUEUE、
+                        //OFFSET_OVERFLOW_BADLY、OFFSET_TOO_SMALL，这些状态服务端偏移量
+                        //校正基本上使用原偏移量，在客户端更新消息消费进度时只有当消息
+                        //进度比当前消费进度大才会覆盖，以此保证消息进度的准确性。
                         case OFFSET_ILLEGAL:
                             log.warn("the pull request offset illegal, {} {}",
                                     pullRequest.toString(), pullResult.toString());
@@ -748,6 +770,11 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
         return this.mQClientFactory.getConsumerStatsManager();
     }
 
+    /**
+     * 立刻执行消息拉取
+     *
+     * @param pullRequest
+     */
     public void executePullRequestImmediately(final PullRequest pullRequest) {
         this.mQClientFactory.getPullMessageService().executePullRequestImmediately(pullRequest);
     }

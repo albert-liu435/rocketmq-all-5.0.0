@@ -210,6 +210,12 @@ public class SubscriptionGroupManager extends ConfigManager {
         }
     }
 
+    /**
+     * 查找订阅关系的配置
+     *
+     * @param group
+     * @return
+     */
     public SubscriptionGroupConfig findSubscriptionGroupConfig(final String group) {
         SubscriptionGroupConfig subscriptionGroupConfig = this.subscriptionGroupTable.get(group);
         if (null == subscriptionGroupConfig) {

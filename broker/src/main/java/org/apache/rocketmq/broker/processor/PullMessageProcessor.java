@@ -278,6 +278,14 @@ public class PullMessageProcessor implements NettyRequestProcessor {
         }
     }
 
+    /**
+     * 处理拉取消息的请求
+     *
+     * @param ctx
+     * @param request
+     * @return
+     * @throws RemotingCommandException
+     */
     @Override
     public RemotingCommand processRequest(final ChannelHandlerContext ctx,
                                           RemotingCommand request) throws RemotingCommandException {
@@ -297,23 +305,34 @@ public class PullMessageProcessor implements NettyRequestProcessor {
      * 第六步：根据PullResult填充responseHeader的
      * NextBeginOffset、MinOffset、MaxOffset，
      *
-     * @param channel
-     * @param request
-     * @param brokerAllowSuspend
+     * @param channel            网络通道，通过该通道向消息拉取客户端发送响应结果。
+     * @param request            消息拉取请求
+     * @param brokerAllowSuspend Broker端是否支持挂起，处理消息拉取时默认传入true，表示如果未找到消息则挂起，如果该参数为false，未找到消息时直接返回客户端消息未找到.如果brokerAllowSuspend为true，表示支持挂起，则将响应对象
+     *                           response设置为null，不会立即向客户端写入响应，hasSuspendFlag
+     *                           参数在拉取消息时构建的拉取标记默认为true。
+     *                           默认支持挂起，根据是否开启长轮询决定挂起方式。如果开启长
+     *                           轮询模式，挂起超时时间来自请求参数，推模式默认为15s，拉模式通
+     *                           过DefaultMQPullConsumer#brokerSuspenMaxTimeMillis进行设置，默
+     *                           认20s。然后创建拉取任务PullRequest并提交到
+     *                           PullRequestHoldService线程中。
      * @return
      * @throws RemotingCommandException
      */
     private RemotingCommand processRequest(final Channel channel, RemotingCommand request, boolean brokerAllowSuspend)
             throws RemotingCommandException {
+        //响应信息
         RemotingCommand response = RemotingCommand.createResponseCommand(PullMessageResponseHeader.class);
+        //响应头信息
         final PullMessageResponseHeader responseHeader = (PullMessageResponseHeader) response.readCustomHeader();
+        //请求头信息
         final PullMessageRequestHeader requestHeader =
                 (PullMessageRequestHeader) request.decodeCommandCustomHeader(PullMessageRequestHeader.class);
-
+        //客户端请求编号
         response.setOpaque(request.getOpaque());
 
         LOGGER.debug("receive PullMessage request command, {}", request);
 
+        //权限校验
         if (!PermName.isReadable(this.brokerController.getBrokerConfig().getBrokerPermission())) {
             response.setCode(ResponseCode.NO_PERMISSION);
             response.setRemark(String.format("the broker[%s] pulling message is forbidden", this.brokerController.getBrokerConfig().getBrokerIP1()));
@@ -327,6 +346,7 @@ public class PullMessageProcessor implements NettyRequestProcessor {
             return response;
         }
 
+        //
         SubscriptionGroupConfig subscriptionGroupConfig =
                 this.brokerController.getSubscriptionGroupManager().findSubscriptionGroupConfig(requestHeader.getConsumerGroup());
         if (null == subscriptionGroupConfig) {
@@ -344,7 +364,7 @@ public class PullMessageProcessor implements NettyRequestProcessor {
 
         final boolean hasCommitOffsetFlag = PullSysFlag.hasCommitOffsetFlag(requestHeader.getSysFlag());
         final boolean hasSubscriptionFlag = PullSysFlag.hasSubscriptionFlag(requestHeader.getSysFlag());
-
+        //topic配置信息
         TopicConfig topicConfig = this.brokerController.getTopicConfigManager().selectTopicConfig(requestHeader.getTopic());
         if (null == topicConfig) {
             LOGGER.error("the topic {} not exist, consumer: {}", requestHeader.getTopic(), RemotingHelper.parseChannelRemoteAddr(channel));
@@ -481,7 +501,10 @@ public class PullMessageProcessor implements NettyRequestProcessor {
         final GetMessageResult getMessageResult =
                 this.brokerController.getMessageStore().getMessage(requestHeader.getConsumerGroup(), requestHeader.getTopic(),
                         requestHeader.getQueueId(), requestHeader.getQueueOffset(), requestHeader.getMaxMsgNums(), messageFilter);
+
         if (getMessageResult != null) {
+            //根据PullResult填充responseHeader的
+            //NextBeginOffset、MinOffset、MaxOffset
             response.setRemark(getMessageResult.getStatus().name());
             responseHeader.setNextBeginOffset(getMessageResult.getNextBeginOffset());
             responseHeader.setMinOffset(getMessageResult.getMinOffset());
@@ -539,6 +562,8 @@ public class PullMessageProcessor implements NettyRequestProcessor {
                     break;
             }
 
+            //：根据主从同步延迟，如果从节点数据包含下一次拉取的
+            //偏移量，则设置下一次拉取任务的brokerId。
             if (this.brokerController.getBrokerConfig().isSlaveReadEnable() && !this.brokerController.getBrokerConfig().isInBrokerContainer()) {
                 // consume too slow ,redirect to another machine
                 if (getMessageResult.isSuggestPullingFromSlave()) {
@@ -659,7 +684,11 @@ public class PullMessageProcessor implements NettyRequestProcessor {
             response.setCode(ResponseCode.SYSTEM_ERROR);
             response.setRemark("store getMessage return null");
         }
-
+        //第九步：如果CommitLog标记为可用并且当前节点为主节点，则更
+        //新消息消费进度，消息消费进度的详情将在5.6节重点讨论。
+        //服务端消息拉取处理完毕，将返回结果拉取到消息调用方。在调
+        //用方，需要重点关注PULL_RETRY_IMMEDIATELY、PULL_OFFSET_MOVED、
+        //PULL_NOT_FOUND等情况下如何校正拉取偏移量。
         boolean storeOffsetEnable = brokerAllowSuspend;
         storeOffsetEnable = storeOffsetEnable && hasCommitOffsetFlag;
         if (storeOffsetEnable) {

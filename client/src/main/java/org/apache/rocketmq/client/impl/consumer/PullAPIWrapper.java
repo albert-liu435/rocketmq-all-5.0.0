@@ -76,6 +76,10 @@ public class PullAPIWrapper {
 
     /**
      * 处理消息拉取结果
+     * 将消息字节
+     * 数组解码成消息列表并填充msgFoundList，对消息进行消息过滤（TAG
+     * 模式）。
+     *
      *
      * @param mq               消息队列
      * @param pullResult       消息拉取结果

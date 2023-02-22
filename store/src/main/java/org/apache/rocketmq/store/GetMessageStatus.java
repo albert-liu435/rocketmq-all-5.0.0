@@ -16,23 +16,26 @@
  */
 package org.apache.rocketmq.store;
 
+/**
+ * 查找到消息状态
+ */
 public enum GetMessageStatus {
 
     FOUND,
 
     NO_MATCHED_MESSAGE,
-
+    //消息存放在下一个CommitLog文件中
     MESSAGE_WAS_REMOVING,
-
+    //消息屋里偏移量为空
     OFFSET_FOUND_NULL,
-
+    //offset越界
     OFFSET_OVERFLOW_BADLY,
-
+    //offset越界一个
     OFFSET_OVERFLOW_ONE,
-
+    //offset未在消息队列中
     OFFSET_TOO_SMALL,
-
+    //未找到队列
     NO_MATCHED_LOGIC_QUEUE,
-
+    //队列中未包含消息
     NO_MESSAGE_IN_QUEUE,
 }

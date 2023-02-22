@@ -25,6 +25,7 @@ import org.apache.rocketmq.logging.InternalLogger;
  * 重新负载均衡,每隔20s进行一次队列重新负载，
  */
 public class RebalanceService extends ServiceThread {
+    //默认等待时间为20s
     private static long waitInterval =
             Long.parseLong(System.getProperty(
                     "rocketmq.client.rebalance.waitInterval", "20000"));

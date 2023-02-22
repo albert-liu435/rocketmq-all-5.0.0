@@ -36,7 +36,7 @@ public class MessageExt extends Message {
     private int queueId;
 
     private int storeSize;
-
+    //队列偏移量
     private long queueOffset;
     //
     private int sysFlag;

@@ -79,6 +79,7 @@ public class RemotingCommand {
             }
         }
     }
+
     //请求命令编码，请求命令类型
     private int code;
     private LanguageCode language = LanguageCode.JAVA;
@@ -156,6 +157,14 @@ public class RemotingCommand {
         return buildErrorResponse(code, remark, null);
     }
 
+    /**
+     * 构造响应信息
+     *
+     * @param code
+     * @param remark
+     * @param classHeader
+     * @return
+     */
     public static RemotingCommand createResponseCommand(int code, String remark,
                                                         Class<? extends CommandCustomHeader> classHeader) {
         RemotingCommand cmd = new RemotingCommand();

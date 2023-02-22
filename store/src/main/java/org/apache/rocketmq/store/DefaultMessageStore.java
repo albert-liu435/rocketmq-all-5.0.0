@@ -143,7 +143,7 @@ public class DefaultMessageStore implements MessageStore {
     private final MessageArrivingListener messageArrivingListener;
     //Broker配置属性
     private final BrokerConfig brokerConfig;
-
+    //broker宕机
     private volatile boolean shutdown = true;
     //文件刷盘检测点。
     private StoreCheckpoint storeCheckpoint;
@@ -748,6 +748,8 @@ public class DefaultMessageStore implements MessageStore {
     }
 
     /**
+     * 查找消息
+     *
      * @param group         Consumer group that launches this query. 消费组名称。
      * @param topic         Topic to query. 主题名称。
      * @param queueId       Queue ID to query. 队列ID。
@@ -763,6 +765,17 @@ public class DefaultMessageStore implements MessageStore {
         return getMessage(group, topic, queueId, offset, maxMsgNums, MAX_PULL_MSG_SIZE, messageFilter);
     }
 
+    /**
+     * 查找消息
+     *
+     * @param group         Consumer group that launches this query. 消费组名称。
+     * @param topic         Topic to query. 主题名称。
+     * @param queueId       Queue ID to query. 队列ID。
+     * @param offset        Logical offset to start from. 待拉取偏移量。
+     * @param maxMsgNums    Maximum count of messages to query. 最大拉取消息条数。
+     * @param messageFilter Message filter used to screen desired messages. 消息过滤器。
+     * @return
+     */
     @Override
     public GetMessageResult getMessage(final String group, final String topic, final int queueId, final long offset,
                                        final int maxMsgNums,

@@ -25,6 +25,9 @@ import java.util.concurrent.atomic.LongAdder;
 import org.apache.rocketmq.common.UtilAll;
 import org.apache.rocketmq.logging.InternalLogger;
 
+/**
+ * 统计条目
+ */
 public class StatsItem {
 
     private final LongAdder value = new LongAdder();
@@ -43,7 +46,7 @@ public class StatsItem {
     private final InternalLogger log;
 
     public StatsItem(String statsName, String statsKey, ScheduledExecutorService scheduledExecutorService,
-        InternalLogger log) {
+                     InternalLogger log) {
         this.statsName = statsName;
         this.statsKey = statsKey;
         this.scheduledExecutorService = scheduledExecutorService;
@@ -159,7 +162,7 @@ public class StatsItem {
                 this.csListMinute.add(new CallSnapshot(System.currentTimeMillis() - 10 * 1000, 0, 0));
             }
             this.csListMinute.add(new CallSnapshot(System.currentTimeMillis(), this.times.sum(), this.value
-                .sum()));
+                    .sum()));
             if (this.csListMinute.size() > 7) {
                 this.csListMinute.removeFirst();
             }
@@ -172,7 +175,7 @@ public class StatsItem {
                 this.csListHour.add(new CallSnapshot(System.currentTimeMillis() - 10 * 60 * 1000, 0, 0));
             }
             this.csListHour.add(new CallSnapshot(System.currentTimeMillis(), this.times.sum(), this.value
-                .sum()));
+                    .sum()));
             if (this.csListHour.size() > 7) {
                 this.csListHour.removeFirst();
             }
@@ -185,7 +188,7 @@ public class StatsItem {
                 this.csListDay.add(new CallSnapshot(System.currentTimeMillis() - 1 * 60 * 60 * 1000, 0, 0));
             }
             this.csListDay.add(new CallSnapshot(System.currentTimeMillis(), this.times.sum(), this.value
-                .sum()));
+                    .sum()));
             if (this.csListDay.size() > 25) {
                 this.csListDay.removeFirst();
             }

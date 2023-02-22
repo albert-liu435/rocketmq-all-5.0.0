@@ -191,6 +191,12 @@ public class ProcessQueue {
         }
     }
 
+    /**
+     * 将消息放入ProcessQueue
+     *
+     * @param msgs
+     * @return
+     */
     public boolean putMessage(final List<MessageExt> msgs) {
         boolean dispatchToConsume = false;
         try {
@@ -198,7 +204,9 @@ public class ProcessQueue {
             try {
                 int validMsgCnt = 0;
                 for (MessageExt msg : msgs) {
+                    //之前的消息
                     MessageExt old = msgTreeMap.put(msg.getQueueOffset(), msg);
+                    //表示消息增加了一条
                     if (null == old) {
                         validMsgCnt++;
                         this.queueOffsetMax = msg.getQueueOffset();

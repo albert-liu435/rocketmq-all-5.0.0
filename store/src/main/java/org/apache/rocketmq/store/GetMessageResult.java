@@ -20,6 +20,9 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * 查找到的消息结果
+ */
 public class GetMessageResult {
 
     private final List<SelectMappedBufferResult> messageMapedList;
@@ -97,7 +100,7 @@ public class GetMessageResult {
         this.messageBufferList.add(mapedBuffer.getByteBuffer());
         this.bufferTotalSize += mapedBuffer.getSize();
         this.msgCount4Commercial += (int) Math.ceil(
-            mapedBuffer.getSize() /  (double)commercialSizePerMsg);
+                mapedBuffer.getSize() / (double) commercialSizePerMsg);
     }
 
     public void addMessage(final SelectMappedBufferResult mapedBuffer, final long queueOffset) {
@@ -105,7 +108,7 @@ public class GetMessageResult {
         this.messageBufferList.add(mapedBuffer.getByteBuffer());
         this.bufferTotalSize += mapedBuffer.getSize();
         this.msgCount4Commercial += (int) Math.ceil(
-            mapedBuffer.getSize() /  (double)commercialSizePerMsg);
+                mapedBuffer.getSize() / (double) commercialSizePerMsg);
         this.messageQueueOffset.add(queueOffset);
     }
 
@@ -152,7 +155,7 @@ public class GetMessageResult {
     @Override
     public String toString() {
         return "GetMessageResult [status=" + status + ", nextBeginOffset=" + nextBeginOffset + ", minOffset="
-            + minOffset + ", maxOffset=" + maxOffset + ", bufferTotalSize=" + bufferTotalSize + ", messageCount=" + messageCount
-            + ", suggestPullingFromSlave=" + suggestPullingFromSlave + "]";
+                + minOffset + ", maxOffset=" + maxOffset + ", bufferTotalSize=" + bufferTotalSize + ", messageCount=" + messageCount
+                + ", suggestPullingFromSlave=" + suggestPullingFromSlave + "]";
     }
 }
