@@ -17,18 +17,23 @@
 package org.apache.rocketmq.client.consumer;
 
 import java.util.List;
+
 import org.apache.rocketmq.common.message.MessageExt;
 
+/**
+ * 消息拉取结果
+ */
 public class PullResult {
     private final PullStatus pullStatus;
     private final long nextBeginOffset;
     private final long minOffset;
     private final long maxOffset;
+    //消息list
     private List<MessageExt> msgFoundList;
 
 
     public PullResult(PullStatus pullStatus, long nextBeginOffset, long minOffset, long maxOffset,
-        List<MessageExt> msgFoundList) {
+                      List<MessageExt> msgFoundList) {
         super();
         this.pullStatus = pullStatus;
         this.nextBeginOffset = nextBeginOffset;
@@ -64,7 +69,7 @@ public class PullResult {
     @Override
     public String toString() {
         return "PullResult [pullStatus=" + pullStatus + ", nextBeginOffset=" + nextBeginOffset
-            + ", minOffset=" + minOffset + ", maxOffset=" + maxOffset + ", msgFoundList="
-            + (msgFoundList == null ? 0 : msgFoundList.size()) + "]";
+                + ", minOffset=" + minOffset + ", maxOffset=" + maxOffset + ", msgFoundList="
+                + (msgFoundList == null ? 0 : msgFoundList.size()) + "]";
     }
 }

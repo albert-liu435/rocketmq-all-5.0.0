@@ -117,6 +117,7 @@ public class MQClientInstance {
     private final MQClientAPIImpl mQClientAPIImpl;
     private final MQAdminImpl mQAdminImpl;
     private final ConcurrentMap<String/* Topic */, TopicRouteData> topicRouteTable = new ConcurrentHashMap<>();
+    //
     private final ConcurrentMap<String/* Topic */, ConcurrentMap<MessageQueue, String/*brokerName*/>> topicEndPointsTable = new ConcurrentHashMap<>();
     private final Lock lockNamesrv = new ReentrantLock();
     private final Lock lockHeartbeat = new ReentrantLock();
@@ -159,7 +160,7 @@ public class MQClientInstance {
         this.clientId = clientId;
 
         this.mQAdminImpl = new MQAdminImpl(this);
-
+        //消息拉取服务
         this.pullMessageService = new PullMessageService(this);
 
         this.rebalanceService = new RebalanceService(this);
@@ -505,6 +506,11 @@ public class MQClientInstance {
         }
     }
 
+    /**
+     * 更新topic路由信息
+     * @param topic
+     * @return
+     */
     public boolean updateTopicRouteInfoFromNameServer(final String topic) {
         return updateTopicRouteInfoFromNameServer(topic, false, null);
     }
@@ -992,10 +998,27 @@ public class MQClientInstance {
         return this.producerTable.get(group);
     }
 
+    /**
+     * 根据消费组名从MQClientInstance中获取消费者的内部实现类
+     * MQConsumerInner，令人意外的是，这里将consumer强制转换为
+     * DefaultMQPushConsumerImpl，也就是PullMessageService，该线程只
+     * 为推模式服务，那拉模式如何拉取消息呢？其实细想也不难理解，对
+     * 于拉模式，RocketMQ只需要提供拉取消息API，再由应用程序调用
+     * API。
+     *
+     * @param group
+     * @return
+     */
     public MQConsumerInner selectConsumer(final String group) {
         return this.consumerTable.get(group);
     }
 
+    /**
+     * 获取broker名称
+     *
+     * @param mq
+     * @return
+     */
     public String getBrokerNameFromMessageQueue(final MessageQueue mq) {
         if (topicEndPointsTable.get(mq.getTopic()) != null && !topicEndPointsTable.get(mq.getTopic()).isEmpty()) {
             return topicEndPointsTable.get(mq.getTopic()).get(mq);
@@ -1044,6 +1067,14 @@ public class MQClientInstance {
         return null;
     }
 
+    /**
+     * 查找broker结果
+     *
+     * @param brokerName     broker名称
+     * @param brokerId       brokerId
+     * @param onlyThisBroker 是否只是该broker
+     * @return
+     */
     public FindBrokerResult findBrokerAddressInSubscribe(
             final String brokerName,
             final long brokerId,
@@ -1055,9 +1086,10 @@ public class MQClientInstance {
         String brokerAddr = null;
         boolean slave = false;
         boolean found = false;
-
+        //获取brokerid和地址
         HashMap<Long/* brokerId */, String/* address */> map = this.brokerAddrTable.get(brokerName);
         if (map != null && !map.isEmpty()) {
+            //broker地址
             brokerAddr = map.get(brokerId);
             slave = brokerId != MixAll.MASTER_ID;
             found = brokerAddr != null;
@@ -1082,6 +1114,13 @@ public class MQClientInstance {
         return null;
     }
 
+    /**
+     * 查找broker版本
+     *
+     * @param brokerName
+     * @param brokerAddr
+     * @return
+     */
     private int findBrokerVersion(String brokerName, String brokerAddr) {
         if (this.brokerVersionTable.containsKey(brokerName)) {
             if (this.brokerVersionTable.get(brokerName).containsKey(brokerAddr)) {

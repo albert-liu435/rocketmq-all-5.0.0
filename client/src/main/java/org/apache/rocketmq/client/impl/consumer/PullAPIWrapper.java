@@ -74,13 +74,24 @@ public class PullAPIWrapper {
         this.unitMode = unitMode;
     }
 
+    /**
+     * 处理消息拉取结果
+     *
+     * @param mq               消息队列
+     * @param pullResult       消息拉取结果
+     * @param subscriptionData
+     * @return
+     */
     public PullResult processPullResult(final MessageQueue mq, final PullResult pullResult,
                                         final SubscriptionData subscriptionData) {
+        //拉取结果
         PullResultExt pullResultExt = (PullResultExt) pullResult;
 
         this.updatePullFromWhichNode(mq, pullResultExt.getSuggestWhichBrokerId());
+        //表示发现了消息
         if (PullStatus.FOUND == pullResult.getPullStatus()) {
             ByteBuffer byteBuffer = ByteBuffer.wrap(pullResultExt.getMessageBinary());
+            //解析消息
             List<MessageExt> msgList = MessageDecoder.decodesBatch(
                     byteBuffer,
                     this.mQClientFactory.getClientConfig().isDecodeReadBody(),
@@ -89,6 +100,7 @@ public class PullAPIWrapper {
             );
 
             boolean needDecodeInnerMessage = false;
+            //遍历消息
             for (MessageExt messageExt : msgList) {
                 if (MessageSysFlag.check(messageExt.getSysFlag(), MessageSysFlag.INNER_BATCH_FLAG)
                         && MessageSysFlag.check(messageExt.getSysFlag(), MessageSysFlag.NEED_UNWRAP_FLAG)) {
@@ -99,6 +111,7 @@ public class PullAPIWrapper {
             if (needDecodeInnerMessage) {
                 List<MessageExt> innerMsgList = new ArrayList<MessageExt>();
                 try {
+                    //遍历消息
                     for (MessageExt messageExt : msgList) {
                         if (MessageSysFlag.check(messageExt.getSysFlag(), MessageSysFlag.INNER_BATCH_FLAG)
                                 && MessageSysFlag.check(messageExt.getSysFlag(), MessageSysFlag.NEED_UNWRAP_FLAG)) {
@@ -156,6 +169,12 @@ public class PullAPIWrapper {
         return pullResult;
     }
 
+    /**
+     * 更新
+     *
+     * @param mq
+     * @param brokerId
+     */
     public void updatePullFromWhichNode(final MessageQueue mq, final long brokerId) {
         AtomicLong suggest = this.pullFromWhichNodeTable.get(mq);
         if (null == suggest) {
@@ -182,20 +201,19 @@ public class PullAPIWrapper {
     }
 
     /**
-     *
-     * @param mq 从哪个消息消费队列拉取消息。
-     * @param subExpression 消息过滤表达式。
-     * @param expressionType 消息表达式类型，分为TAG、SQL92
+     * @param mq                         从哪个消息消费队列拉取消息。
+     * @param subExpression              消息过滤表达式。
+     * @param expressionType             消息表达式类型，分为TAG、SQL92
      * @param subVersion
-     * @param offset 消息拉取偏移量。
-     * @param maxNums 本次拉取最大消息条数，默认32条。
+     * @param offset                     消息拉取偏移量。
+     * @param maxNums                    本次拉取最大消息条数，默认32条。
      * @param maxSizeInBytes
-     * @param sysFlag 拉取系统标记。
-     * @param commitOffset 当前MessageQueue的消费进度（内存中)
+     * @param sysFlag                    拉取系统标记。
+     * @param commitOffset               当前MessageQueue的消费进度（内存中)
      * @param brokerSuspendMaxTimeMillis 消息拉取过程中允许Broker挂起的时间，默认15s。
-     * @param timeoutMillis 消息拉取超时时间。
-     * @param communicationMode 消息拉取模式，默认为异步拉取。
-     * @param pullCallback ：从Broker拉取到消息后的回调方法
+     * @param timeoutMillis              消息拉取超时时间。
+     * @param communicationMode          消息拉取模式，默认为异步拉取。
+     * @param pullCallback               ：从Broker拉取到消息后的回调方法
      * @return
      * @throws MQClientException
      * @throws RemotingException
@@ -222,12 +240,13 @@ public class PullAPIWrapper {
         //Broker构成主从结构，其BrokerId会不一样，在每次拉取消息后，会
         //给出一个建议，下次是从主节点还是从节点拉取，如代码清单5-15所
         //示
-
         FindBrokerResult findBrokerResult =
                 this.mQClientFactory.findBrokerAddressInSubscribe(this.mQClientFactory.getBrokerNameFromMessageQueue(mq),
                         this.recalculatePullFromWhichNode(mq), false);
+        //没有发现
         if (null == findBrokerResult) {
             this.mQClientFactory.updateTopicRouteInfoFromNameServer(mq.getTopic());
+            //再次查找
             findBrokerResult =
                     this.mQClientFactory.findBrokerAddressInSubscribe(this.mQClientFactory.getBrokerNameFromMessageQueue(mq),
                             this.recalculatePullFromWhichNode(mq), false);
@@ -248,7 +267,7 @@ public class PullAPIWrapper {
             if (findBrokerResult.isSlave()) {
                 sysFlagInner = PullSysFlag.clearCommitOffsetFlag(sysFlagInner);
             }
-
+            //构建pull 消息header
             PullMessageRequestHeader requestHeader = new PullMessageRequestHeader();
             requestHeader.setConsumerGroup(this.consumerGroup);
             requestHeader.setTopic(mq.getTopic());
@@ -316,6 +335,12 @@ public class PullAPIWrapper {
         );
     }
 
+    /**
+     * 重新计算节点
+     *
+     * @param mq
+     * @return
+     */
     public long recalculatePullFromWhichNode(final MessageQueue mq) {
         if (this.isConnectBrokerByUser()) {
             return this.defaultBrokerId;
@@ -329,6 +354,14 @@ public class PullAPIWrapper {
         return MixAll.MASTER_ID;
     }
 
+    /**
+     * 计算FilterServer
+     *
+     * @param topic
+     * @param brokerAddr
+     * @return
+     * @throws MQClientException
+     */
     private String computePullFromWhichFilterServer(final String topic, final String brokerAddr)
             throws MQClientException {
         ConcurrentMap<String, TopicRouteData> topicRouteTable = this.mQClientFactory.getTopicRouteTable();

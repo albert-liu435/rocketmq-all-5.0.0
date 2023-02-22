@@ -61,6 +61,11 @@ public class PullMessageService extends ServiceThread {
         this.mQClientFactory = mQClientFactory;
     }
 
+    /**
+     * 延迟将PullRequest添加到pullRequestQueue
+     * @param pullRequest
+     * @param timeDelay
+     */
     public void executePullRequestLater(final PullRequest pullRequest, final long timeDelay) {
         if (!isStopped()) {
             this.scheduledExecutorService.schedule(new Runnable() {
@@ -143,7 +148,12 @@ public class PullMessageService extends ServiceThread {
      * @param pullRequest
      */
     private void pullMessage(final PullRequest pullRequest) {
-        //选择一个内部消费者
+        //根据消费组名从MQClientInstance中获取消费者的内部实现类
+        //MQConsumerInner，令人意外的是，这里将consumer强制转换为
+        //DefaultMQPushConsumerImpl，也就是PullMessageService，该线程只
+        //为推模式服务，那拉模式如何拉取消息呢？其实细想也不难理解，对
+        //于拉模式，RocketMQ只需要提供拉取消息API，再由应用程序调用
+        //API。
         final MQConsumerInner consumer = this.mQClientFactory.selectConsumer(pullRequest.getConsumerGroup());
         if (consumer != null) {
             DefaultMQPushConsumerImpl impl = (DefaultMQPushConsumerImpl) consumer;

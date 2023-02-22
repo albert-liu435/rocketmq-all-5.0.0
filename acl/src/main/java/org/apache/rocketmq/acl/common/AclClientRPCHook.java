@@ -19,6 +19,7 @@ package org.apache.rocketmq.acl.common;
 import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
+
 import org.apache.rocketmq.remoting.RPCHook;
 import org.apache.rocketmq.remoting.protocol.RemotingCommand;
 
@@ -26,6 +27,9 @@ import static org.apache.rocketmq.acl.common.SessionCredentials.ACCESS_KEY;
 import static org.apache.rocketmq.acl.common.SessionCredentials.SECURITY_TOKEN;
 import static org.apache.rocketmq.acl.common.SessionCredentials.SIGNATURE;
 
+/**
+ * Acl控制钩子函数
+ */
 public class AclClientRPCHook implements RPCHook {
     private final SessionCredentials sessionCredentials;
 

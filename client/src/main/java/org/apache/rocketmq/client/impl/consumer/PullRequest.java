@@ -25,7 +25,7 @@ import org.apache.rocketmq.common.message.MessageRequestMode;
 public class PullRequest implements MessageRequest {
     //消费者组
     private String consumerGroup;
-    //带拉取消费队列
+    //待拉取消费队列
     private MessageQueue messageQueue;
     //消息处理队列，从Broker中拉
     //取到的消息会先存入ProccessQueue，然后再提交到消费者消费线程池

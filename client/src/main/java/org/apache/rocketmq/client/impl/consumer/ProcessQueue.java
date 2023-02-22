@@ -100,6 +100,7 @@ public class ProcessQueue {
     private final TreeMap<Long, MessageExt> msgTreeMap = new TreeMap<Long, MessageExt>();
     //ProcessQueue中总消息数。
     private final AtomicLong msgCount = new AtomicLong();
+    //消息大小
     private final AtomicLong msgSize = new AtomicLong();
     private final Lock consumeLock = new ReentrantLock();
     /**
@@ -119,6 +120,7 @@ public class ProcessQueue {
     //上一次消费消息的时
     //间戳。
     private volatile long lastConsumeTimestamp = System.currentTimeMillis();
+    //是否锁住
     private volatile boolean locked = false;
     private volatile long lastLockTimestamp = System.currentTimeMillis();
     private volatile boolean consuming = false;

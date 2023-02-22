@@ -22,5 +22,10 @@ import org.apache.rocketmq.remoting.netty.ResponseFuture;
  * 执行回调
  */
 public interface InvokeCallback {
+    /**
+     * 执行完成后的回调
+     *
+     * @param responseFuture
+     */
     void operationComplete(final ResponseFuture responseFuture);
 }

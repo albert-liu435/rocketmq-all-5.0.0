@@ -211,6 +211,7 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
     private int popThresholdForQueue = 96;
 
     /**
+     * 缓存消息的大小
      * Limit the cached message size on queue level, each message queue will cache at most 100 MiB messages by default,
      * Consider the {@code pullBatchSize}, the instantaneous value may exceed the limit
      *

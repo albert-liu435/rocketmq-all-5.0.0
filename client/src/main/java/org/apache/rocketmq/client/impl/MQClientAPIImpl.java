@@ -859,7 +859,7 @@ public class MQClientAPIImpl implements NameServerUpdateCallback {
         } else {
             request = RemotingCommand.createRequestCommand(RequestCode.PULL_MESSAGE, requestHeader);
         }
-
+        //消息拉取模式，默认为异步拉取
         switch (communicationMode) {
             case ONEWAY:
                 assert false;
@@ -994,12 +994,23 @@ public class MQClientAPIImpl implements NameServerUpdateCallback {
         });
     }
 
+    /**
+     * 异步拉取消息
+     *
+     * @param addr          broker地址
+     * @param request       请求信息
+     * @param timeoutMillis 超时时间
+     * @param pullCallback  回调地址
+     * @throws RemotingException
+     * @throws InterruptedException
+     */
     private void pullMessageAsync(
             final String addr,
             final RemotingCommand request,
             final long timeoutMillis,
             final PullCallback pullCallback
     ) throws RemotingException, InterruptedException {
+        //进行接口调用
         this.remotingClient.invokeAsync(addr, request, timeoutMillis, new InvokeCallback() {
             @Override
             public void operationComplete(ResponseFuture responseFuture) {
@@ -1039,6 +1050,10 @@ public class MQClientAPIImpl implements NameServerUpdateCallback {
     private PullResult processPullResponse(
             final RemotingCommand response,
             final String addr) throws MQBrokerException, RemotingCommandException {
+        //第一步：根据响应结果解码成PullResultExt对象，此时只是从网
+        //络中读取消息列表中的byte[] messageBinary属性，如代码清单5-22
+        //所示。先重点看一下拉取状态码的转换，
+
         PullStatus pullStatus = PullStatus.NO_NEW_MSG;
         switch (response.getCode()) {
             case ResponseCode.SUCCESS:
