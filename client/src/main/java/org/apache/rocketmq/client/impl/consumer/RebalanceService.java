@@ -23,6 +23,12 @@ import org.apache.rocketmq.logging.InternalLogger;
 
 /**
  * 重新负载均衡,每隔20s进行一次队列重新负载，
+ *
+ * 问题1：PullRequest对象在什么时候创建并加入
+ * pullRequestQueue，可以唤醒PullMessage Service线程？
+ * 问题2：集群内多个消费者是如何负载主题下多个消费队列的？如
+ * 果有新的消费者加入，消息队列又会如何重新分布？
+ *
  */
 public class RebalanceService extends ServiceThread {
     //默认等待时间为20s
@@ -30,6 +36,8 @@ public class RebalanceService extends ServiceThread {
             Long.parseLong(System.getProperty(
                     "rocketmq.client.rebalance.waitInterval", "20000"));
     private final InternalLogger log = ClientLogger.getLog();
+    //。一个MQClientInstance持有一个
+    //RebalanceService实现，并随着MQClientInstance的启动而启动
     private final MQClientInstance mqClientFactory;
 
     public RebalanceService(MQClientInstance mqClientFactory) {

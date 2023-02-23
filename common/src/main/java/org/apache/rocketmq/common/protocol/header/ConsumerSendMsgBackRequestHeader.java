@@ -23,17 +23,30 @@ import org.apache.rocketmq.remoting.annotation.CFNotNull;
 import org.apache.rocketmq.remoting.annotation.CFNullable;
 import org.apache.rocketmq.remoting.exception.RemotingCommandException;
 
+/**
+ * 消息确认请求header
+ */
 public class ConsumerSendMsgBackRequestHeader implements CommandCustomHeader {
+    //消息物理偏移量
     @CFNotNull
     private Long offset;
+    //消费组名
     @CFNotNull
     private String group;
+    //延迟级别。RcketMQ不支持精确的定时消息调
+    //度，而是提供几个延时级别，
+    //MessageStoreConfig#messageDelayLevel = "1s 5s 10s 30s 1m 2m
+    //3m 4m 5m 6m 7m 8m 9m 10m 20m 30m 1h 2h"，delayLevel=1，表示延
+    //迟5s，delayLevel=2，表示延迟10s。
     @CFNotNull
     private Integer delayLevel;
+    //消息ID。
     private String originMsgId;
+    //：消息主题。
     private String originTopic;
     @CFNullable
     private boolean unitMode = false;
+    //最大重新消费次数，默认16次。
     private Integer maxReconsumeTimes;
 
     @Override
@@ -100,13 +113,13 @@ public class ConsumerSendMsgBackRequestHeader implements CommandCustomHeader {
     @Override
     public String toString() {
         return MoreObjects.toStringHelper(this)
-            .add("offset", offset)
-            .add("group", group)
-            .add("delayLevel", delayLevel)
-            .add("originMsgId", originMsgId)
-            .add("originTopic", originTopic)
-            .add("unitMode", unitMode)
-            .add("maxReconsumeTimes", maxReconsumeTimes)
-            .toString();
+                .add("offset", offset)
+                .add("group", group)
+                .add("delayLevel", delayLevel)
+                .add("originMsgId", originMsgId)
+                .add("originTopic", originTopic)
+                .add("unitMode", unitMode)
+                .add("maxReconsumeTimes", maxReconsumeTimes)
+                .toString();
     }
 }

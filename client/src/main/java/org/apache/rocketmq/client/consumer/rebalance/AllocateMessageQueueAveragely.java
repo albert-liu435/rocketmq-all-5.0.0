@@ -18,11 +18,19 @@ package org.apache.rocketmq.client.consumer.rebalance;
 
 import java.util.ArrayList;
 import java.util.List;
+
 import org.apache.rocketmq.client.log.ClientLogger;
 import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.common.message.MessageQueue;
 
 /**
+ * 1）AllocateMessageQueueAveragely：平均分配，推荐使用。
+ * 举例来说，如果现在有8个消息消费队列q1、q2、q3、q4、q5、
+ * q6、q7、q8，有3个消费者c1、c2、c3，那么根据该负载算法，消息队
+ * 列分配如下。
+ * c1：q1、q2、q3。
+ * c2：q4、q5、q6。
+ * c3：q7、q8。
  * Average Hashing queue algorithm
  */
 public class AllocateMessageQueueAveragely extends AbstractAllocateMessageQueueStrategy {
@@ -37,7 +45,7 @@ public class AllocateMessageQueueAveragely extends AbstractAllocateMessageQueueS
 
     @Override
     public List<MessageQueue> allocate(String consumerGroup, String currentCID, List<MessageQueue> mqAll,
-        List<String> cidAll) {
+                                       List<String> cidAll) {
 
         List<MessageQueue> result = new ArrayList<MessageQueue>();
         if (!check(consumerGroup, currentCID, mqAll, cidAll)) {
@@ -47,8 +55,8 @@ public class AllocateMessageQueueAveragely extends AbstractAllocateMessageQueueS
         int index = cidAll.indexOf(currentCID);
         int mod = mqAll.size() % cidAll.size();
         int averageSize =
-            mqAll.size() <= cidAll.size() ? 1 : (mod > 0 && index < mod ? mqAll.size() / cidAll.size()
-                + 1 : mqAll.size() / cidAll.size());
+                mqAll.size() <= cidAll.size() ? 1 : (mod > 0 && index < mod ? mqAll.size() / cidAll.size()
+                        + 1 : mqAll.size() / cidAll.size());
         int startIndex = (mod > 0 && index < mod) ? index * averageSize : index * averageSize + mod;
         int range = Math.min(averageSize, mqAll.size() - startIndex);
         for (int i = 0; i < range; i++) {

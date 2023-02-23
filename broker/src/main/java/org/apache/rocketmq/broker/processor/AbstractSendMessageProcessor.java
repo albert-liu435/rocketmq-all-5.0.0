@@ -83,6 +83,14 @@ public abstract class AbstractSendMessageProcessor implements NettyRequestProces
         this.consumeMessageHookList = consumeMessageHookList;
     }
 
+    /**
+     * 处理消息消费ack
+     *
+     * @param ctx
+     * @param request
+     * @return
+     * @throws RemotingCommandException
+     */
     protected RemotingCommand consumerSendMsgBack(final ChannelHandlerContext ctx, final RemotingCommand request)
             throws RemotingCommandException {
         final RemotingCommand response = RemotingCommand.createResponseCommand(null);
@@ -100,7 +108,9 @@ public abstract class AbstractSendMessageProcessor implements NettyRequestProces
         // The broker that received the request.
         // It may be a master broker or a slave broker
         final BrokerController currentBroker = this.brokerController;
-
+        //第一步：获取消费组的订阅配置信息，如果配置信息为空，返回
+        //配置组信息不存在错误，如果重试队列数量小于1，则直接返回成功，
+        //说明该消费组不支持重试
         SubscriptionGroupConfig subscriptionGroupConfig =
                 masterBroker.getSubscriptionGroupManager().findSubscriptionGroupConfig(requestHeader.getGroup());
         if (null == subscriptionGroupConfig) {
@@ -122,7 +132,8 @@ public abstract class AbstractSendMessageProcessor implements NettyRequestProces
             response.setRemark(null);
             return response;
         }
-
+        //第二步：创建重试主题，重试主题名称为%RETRY%+消费组名称，
+        //从重试队列中随机选择一个队列，并构建TopicConfig主题配置信息，
         String newTopic = MixAll.getRetryTopic(requestHeader.getGroup());
         int queueIdInt = this.random.nextInt(subscriptionGroupConfig.getRetryQueueNums());
 
@@ -147,6 +158,13 @@ public abstract class AbstractSendMessageProcessor implements NettyRequestProces
             response.setRemark(String.format("the topic[%s] sending message is forbidden", newTopic));
             return response;
         }
+
+        //第三步：根据消息物理偏移量从CommitLog文件中获取消息，同时
+        //将消息的主题存入属性。
+        //第四步：设置消息重试次数，如果消息重试次数已超过
+        //maxReconsumeTimes，再次改变newTopic主题为DLQ（"%DLQ%"），该主
+        //题的权限为只写，说明消息一旦进入DLQ队列，RocketMQ将不负责再次
+        //调度消费了，需要人工干预，
 
         // Look message from the origin message store
         MessageExt msgExt = currentBroker.getMessageStore().lookMessageByOffset(requestHeader.getOffset());
@@ -207,7 +225,12 @@ public abstract class AbstractSendMessageProcessor implements NettyRequestProces
 
             msgExt.setDelayTimeLevel(delayLevel);
         }
-
+        //第五步：根据原先的消息创建一个新的消息对象，重试消息会拥
+        //有一个唯一消息ID（msgId）并存入CommitLog文件。这里不会更新原
+        //先的消息，而是会将原先的主题、消息ID存入消息属性，主题名称为
+        //重试主题，其他属性与原消息保持一致。
+        //第六步：将消息存入CommitLog文件。这里想再重点突出消息重试
+        //机制，该机制的实现依托于定时任务，
         MessageExtBrokerInner msgInner = new MessageExtBrokerInner();
         msgInner.setTopic(newTopic);
         msgInner.setBody(msgExt.getBody());
@@ -228,6 +251,17 @@ public abstract class AbstractSendMessageProcessor implements NettyRequestProces
         msgInner.setPropertiesString(MessageDecoder.messageProperties2String(msgExt.getProperties()));
 
         boolean succeeded = false;
+
+        //在存入CommitLog文件之前，如果消息的延迟级别delayTimeLevel
+        //大于0，将消息的主题与队列替换为定时任务主题
+        //“SCHEDULE_TOPIC_XXXX”，队列ID为延迟级别减1。再次将消息主
+        //题、队列存入消息属性，键分别为PROPERTY_REAL_TOPIC、
+        //PROPERTY_REAL_QUEUE_ID。
+        //ACK消息存入CommitLog文件后，将依托RocketMQ定时消息机制在
+        //延迟时间到期后，再次拉取消息，提交至消费线程池，定时任务机制
+        //的细节将在5.7节进行分析。ACK消息是同步发送的，如果在发送过程
+        //中出现错误，将记录所有发送ACK消息失败的消息，然后再次封装成
+        //ConsumeRequest，延迟5s执行。
 
         // Put retry topic to master message store
         PutMessageResult putMessageResult = masterBroker.getMessageStore().putMessage(msgInner);

@@ -19,12 +19,15 @@ package org.apache.rocketmq.client.consumer.rebalance;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+
 import org.apache.rocketmq.common.consistenthash.ConsistentHashRouter;
 import org.apache.rocketmq.common.consistenthash.HashFunction;
 import org.apache.rocketmq.common.consistenthash.Node;
 import org.apache.rocketmq.common.message.MessageQueue;
 
 /**
+ * AllocateMessageQueueConsistentHash：一致性哈希。因为消
+ * 息队列负载信息不容易跟踪，所以不推荐使用。
  * Consistent Hashing queue algorithm
  */
 public class AllocateMessageQueueConsistentHash extends AbstractAllocateMessageQueueStrategy {
@@ -50,7 +53,7 @@ public class AllocateMessageQueueConsistentHash extends AbstractAllocateMessageQ
 
     @Override
     public List<MessageQueue> allocate(String consumerGroup, String currentCID, List<MessageQueue> mqAll,
-        List<String> cidAll) {
+                                       List<String> cidAll) {
 
         List<MessageQueue> result = new ArrayList<MessageQueue>();
         if (!check(consumerGroup, currentCID, mqAll, cidAll)) {

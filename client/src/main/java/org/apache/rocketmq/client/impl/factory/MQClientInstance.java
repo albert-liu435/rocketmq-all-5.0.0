@@ -105,6 +105,7 @@ public class MQClientInstance {
     private final ConcurrentMap<String, MQProducerInner> producerTable = new ConcurrentHashMap<>();
 
     /**
+     * key为消费者组，value为内部消费者
      * The container of the consumer in the current client. The key is the name of consumerGroup.
      */
     private final ConcurrentMap<String, MQConsumerInner> consumerTable = new ConcurrentHashMap<>();
@@ -508,6 +509,7 @@ public class MQClientInstance {
 
     /**
      * 更新topic路由信息
+     *
      * @param topic
      * @return
      */

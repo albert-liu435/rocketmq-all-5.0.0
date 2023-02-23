@@ -55,6 +55,7 @@ public abstract class RebalanceImpl {
 
     protected final ConcurrentMap<String/* topic */, Set<MessageQueue>> topicSubscribeInfoTable =
             new ConcurrentHashMap<String, Set<MessageQueue>>();
+    //主题的订阅信息
     protected final ConcurrentMap<String /* topic */, SubscriptionData> subscriptionInner =
             new ConcurrentHashMap<String, SubscriptionData>();
     protected String consumerGroup;
@@ -257,8 +258,10 @@ public abstract class RebalanceImpl {
 
         boolean balanced = true;
         Map<String, SubscriptionData> subTable = this.getSubscriptionInner();
+
         if (subTable != null) {
             for (final Map.Entry<String, SubscriptionData> entry : subTable.entrySet()) {
+                //topic
                 final String topic = entry.getKey();
                 try {
                     if (!clientRebalance(topic) && tryQueryAssignment(topic)) {
@@ -316,10 +319,26 @@ public abstract class RebalanceImpl {
         return subscriptionInner;
     }
 
+    /**
+     * 第一步：从主题订阅信息缓存表中获取主题的队列信息。发送请
+     * 求从Broker中获取该消费组内当前所有的消费者客户端ID，主题的队
+     * 列可能分布在多个Broker上，那么请求该发往哪个Broker呢？
+     * RocketeMQ从主题的路由信息表中随机选择一个Broker。Broker为什么
+     * 会存在消费组内所有消费者的信息呢？我们不妨回忆一下，消费者在
+     * 启动的时候会向MQClientInstance中注册消费者，然后
+     * MQClientInstance会向所有的Broker发送心跳包，心跳包中包含
+     * MQClientInstance的消费者信息，如代码清单5-42所示。如果mqSet、
+     * cidAll任意一个为空，则忽略本次消息队列负载。
+     *
+     * @param topic
+     * @param isOrder
+     * @return
+     */
     private boolean rebalanceByTopic(final String topic, final boolean isOrder) {
         boolean balanced = true;
         switch (messageModel) {
             case BROADCASTING: {
+                //获取主题队列信息
                 Set<MessageQueue> mqSet = this.topicSubscribeInfoTable.get(topic);
                 if (mqSet != null) {
                     boolean changed = this.updateProcessQueueTableInRebalance(topic, mqSet, isOrder);
@@ -350,6 +369,10 @@ public abstract class RebalanceImpl {
                 }
 
                 if (mqSet != null && cidAll != null) {
+
+                    //第二步：对cidAll、mqAll进行排序。这一步很重要，同一个消费
+                    //组内看到的视图应保持一致，确保同一个消费队列不会被多个消费者
+                    //分配。RocketMQ消息队列分配算法接口
                     List<MessageQueue> mqAll = new ArrayList<MessageQueue>();
                     mqAll.addAll(mqSet);
 

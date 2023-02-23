@@ -19,9 +19,12 @@ package org.apache.rocketmq.client.consumer.rebalance;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+
 import org.apache.rocketmq.common.message.MessageQueue;
 
 /**
+ * AllocateMessageQueueByMachineRoom：根据Broker部署机房
+ * 名，对每个消费者负责不同的Broker上的队列。
  * Computer room Hashing queue algorithm, such as Alipay logic room
  */
 public class AllocateMessageQueueByMachineRoom extends AbstractAllocateMessageQueueStrategy {
@@ -29,7 +32,7 @@ public class AllocateMessageQueueByMachineRoom extends AbstractAllocateMessageQu
 
     @Override
     public List<MessageQueue> allocate(String consumerGroup, String currentCID, List<MessageQueue> mqAll,
-        List<String> cidAll) {
+                                       List<String> cidAll) {
 
         List<MessageQueue> result = new ArrayList<MessageQueue>();
         if (!check(consumerGroup, currentCID, mqAll, cidAll)) {

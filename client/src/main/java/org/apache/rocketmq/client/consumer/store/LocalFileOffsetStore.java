@@ -38,15 +38,25 @@ import org.apache.rocketmq.common.message.MessageQueue;
 import org.apache.rocketmq.remoting.exception.RemotingException;
 
 /**
+ * 广播模式消息消费进度存储在消费者本地，其实现类为
+ * org.apache.rocketmq.client.consumer.store.LocalFileOffsetStore
  * Local storage implementation
  */
 public class LocalFileOffsetStore implements OffsetStore {
+    //消息进度存储目录，可以通过-
+    //Drocketmq.client. localOffsetStoreDir指定，如果未指定，则默认
+    //为用户主目录/.rocketmq_offsets。
     public final static String LOCAL_OFFSET_STORE_DIR = System.getProperty(
             "rocketmq.client.localOffsetStoreDir",
             System.getProperty("user.home") + File.separator + ".rocketmq_offsets");
     private final static InternalLogger log = ClientLogger.getLog();
+    //2）MQClientInstance mQClientFactory：消息客户端。
     private final MQClientInstance mQClientFactory;
+    //3）groupName：消息消费组。
     private final String groupName;
+    //storePath：消息进度存储文件
+    //LOCAL_OFFSET_STORE_DIR/.rocketmq_offsets/{mQClientFactory.get
+    //ClientId()}/groupName/offsets.json。
     private final String storePath;
     //消息队列的偏移量
     private ConcurrentMap<MessageQueue, AtomicLong> offsetTable =

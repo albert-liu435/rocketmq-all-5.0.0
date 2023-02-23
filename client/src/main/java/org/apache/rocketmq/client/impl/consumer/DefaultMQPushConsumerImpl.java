@@ -452,7 +452,7 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
                             }
 
                             break;
-                            //NO_NEW_MSG对应GetMessageResult.OFFSET_FOUND_NULL、
+                        //NO_NEW_MSG对应GetMessageResult.OFFSET_FOUND_NULL、
                         //GetMessageResult.OFFSET_OVERFLOW_ONE。
                         case NO_NEW_MSG:
                         case NO_MATCHED_MSG:
@@ -462,7 +462,7 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
 
                             DefaultMQPushConsumerImpl.this.executePullRequestImmediately(pullRequest);
                             break;
-                            //如果拉取结果显示偏移量非法，首先将ProcessQueue的dropped设
+                        //如果拉取结果显示偏移量非法，首先将ProcessQueue的dropped设
                         //为true，表示丢弃该消费队列，意味着ProcessQueue中拉取的消息将
                         //停止消费，然后根据服务端下一次校对的偏移量尝试更新消息消费进
                         //度（内存中），然后尝试持久化消息消费进度，并将该消息队列从
@@ -1470,6 +1470,9 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
         return new HashSet<SubscriptionData>(this.rebalanceImpl.getSubscriptionInner().values());
     }
 
+    /**
+     * 消费端进行负载均衡
+     */
     @Override
     public void doRebalance() {
         if (!this.pause) {
